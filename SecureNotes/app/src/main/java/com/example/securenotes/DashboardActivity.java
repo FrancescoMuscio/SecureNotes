@@ -29,6 +29,8 @@ public class DashboardActivity extends AppCompatActivity {
     private Runnable timeoutRunnable;
     private List<String> noteIds = new ArrayList<>();
     private NoteAdapter adapter;
+    private boolean wasInBackground = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +65,15 @@ public class DashboardActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (AppLifecycleTracker.needsReauth()) {
+            AppLifecycleTracker.clearReauthFlag();
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            return;
+        }
+
         resetTimeout();
         loadNoteList();
     }
@@ -153,14 +164,26 @@ public class DashboardActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_change_pin) {
-            startActivity(new Intent(this, ChangePinActivity.class));
-            return true;
-        } else if (item.getItemId() == R.id.action_settings) {
+        int id = item.getItemId();
+
+        if (id == R.id.action_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
+
+        } else if (id == R.id.action_file_vault) {
+            startActivity(new Intent(this, FileVaultActivity.class));
+            return true;
         }
+
         return super.onOptionsItemSelected(item);
     }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        wasInBackground = true;
+    }
+
 }
 

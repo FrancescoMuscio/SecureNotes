@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,42 +14,32 @@ import androidx.security.crypto.MasterKey;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-public class PinActivity extends AppCompatActivity {
+public class SetupPinActivity extends AppCompatActivity {
 
     private EditText etPin;
-    private TextView tvStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_pin);
+        setContentView(R.layout.activity_pin_setup);
 
-        etPin = findViewById(R.id.et_pin);
-        tvStatus = findViewById(R.id.tv_pin_status);
-        Button btnConfirm = findViewById(R.id.btn_confirm_pin);
+        etPin = findViewById(R.id.et_pin_setup);
+        Button btnSetPin = findViewById(R.id.btn_set_pin);
 
-        btnConfirm.setOnClickListener(v -> {
-            String enteredPin = etPin.getText().toString().trim();
+        btnSetPin.setOnClickListener(v -> {
+            String pin = etPin.getText().toString().trim();
+            if (pin.length() < 4) {
+                Toast.makeText(this, "PIN troppo corto", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
             try {
-                SharedPreferences prefs = getEncryptedPrefs();
-                String savedPin = prefs.getString("user_pin", null);
-
-                if (savedPin == null) {
-                    tvStatus.setText("Nessun PIN salvato. Torna al login.");
-                    return;
-                }
-
-                if (enteredPin.equals(savedPin)) {
-                    AppLifecycleTracker.clearReauthFlag(); // evita doppia autenticazione
-                    startActivity(new Intent(this, DashboardActivity.class));
-                    finish();
-                } else {
-                    tvStatus.setText("PIN errato");
-                }
-
+                getEncryptedPrefs().edit().putString("user_pin", pin).apply();
+                Toast.makeText(this, "PIN impostato", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(this, DashboardActivity.class));
+                finish();
             } catch (Exception e) {
-                Toast.makeText(this, "Errore sicurezza", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Errore durante il salvataggio", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -69,4 +58,3 @@ public class PinActivity extends AppCompatActivity {
         );
     }
 }
-

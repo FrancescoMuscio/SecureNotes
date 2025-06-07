@@ -1,17 +1,22 @@
 package com.example.securenotes;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
-
-import androidx.annotation.NonNull;
-
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.concurrent.Executor;
 
 public class LoginActivity extends AppCompatActivity {
@@ -27,74 +32,118 @@ public class LoginActivity extends AppCompatActivity {
         tvStatus = findViewById(R.id.tv_status);
         btnUsePin = findViewById(R.id.btn_use_pin);
 
-        btnUsePin.setOnClickListener(v -> openPinFallback());
-
-        checkBiometricSupportAndAuthenticate();
-    }
-
-    private void checkBiometricSupportAndAuthenticate() {
         BiometricManager biometricManager = BiometricManager.from(this);
-        switch (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG |
-                BiometricManager.Authenticators.DEVICE_CREDENTIAL)) {
-            case BiometricManager.BIOMETRIC_SUCCESS:
-                showBiometricPrompt();
-                break;
-            case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE:
-            case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE:
-            case BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED:
-            default:
-                tvStatus.setText("Biometria non disponibile");
-                btnUsePin.setVisibility(Button.VISIBLE);
-                break;
+
+        if (biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS) {
+            showBiometricPrompt();
+        } else {
+            tvStatus.setText("Biometria non disponibile");
+            btnUsePin.setVisibility(Button.VISIBLE);
         }
+
+        btnUsePin.setOnClickListener(v -> {
+            try {
+                SharedPreferences prefs = getEncryptedPrefs();
+                String savedPin = prefs.getString("user_pin", null);
+
+                if (savedPin == null) {
+                    startActivity(new Intent(this, SetupPinActivity.class));
+                } else {
+                    startActivity(new Intent(this, PinActivity.class));
+                }
+
+                finish();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Errore nel controllo PIN", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void showBiometricPrompt() {
         Executor executor = ContextCompat.getMainExecutor(this);
 
-        BiometricPrompt.AuthenticationCallback callback = new BiometricPrompt.AuthenticationCallback() {
+        BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
             @Override
             public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                 super.onAuthenticationSucceeded(result);
-                tvStatus.setText("Accesso effettuato");
                 goToDashboard();
-            }
-
-            @Override
-            public void onAuthenticationFailed() {
-                super.onAuthenticationFailed();
-                tvStatus.setText("Autenticazione fallita");
             }
 
             @Override
             public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                 super.onAuthenticationError(errorCode, errString);
-                tvStatus.setText("Errore: " + errString);
-                btnUsePin.setVisibility(Button.VISIBLE);
+                fallbackToPinOrSetup();
             }
-        };
 
-        BiometricPrompt prompt = new BiometricPrompt(this, executor, callback);
+            @Override
+            public void onAuthenticationFailed() {
+                super.onAuthenticationFailed();
+                Toast.makeText(LoginActivity.this, "Autenticazione fallita", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Autenticazione necessaria")
-                .setSubtitle("Usa l'impronta o il volto")
+                .setTitle("Accesso biometrico")
+                .setSubtitle("Sblocca SecureNotes")
                 .setNegativeButtonText("Usa PIN")
                 .build();
 
         prompt.authenticate(promptInfo);
     }
 
-    private void openPinFallback() {
-        // Avvia activity fallback per il PIN
-        Intent intent = new Intent(this, PinActivity.class);
-        startActivity(intent);
-        finish();
+    private void fallbackToPinOrSetup() {
+        try {
+            SharedPreferences prefs = getEncryptedPrefs();
+            String savedPin = prefs.getString("user_pin", null);
+
+            if (savedPin == null) {
+                startActivity(new Intent(this, SetupPinActivity.class));
+            } else {
+                startActivity(new Intent(this, PinActivity.class));
+            }
+
+            finish();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Errore nel fallback", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void goToDashboard() {
-        Intent intent = new Intent(this, DashboardActivity.class);
-        startActivity(intent);
-        finish();
+        try {
+            SharedPreferences prefs = getEncryptedPrefs();
+            String savedPin = prefs.getString("user_pin", null);
+
+            if (savedPin == null) {
+                startActivity(new Intent(this, SetupPinActivity.class));
+            } else {
+                startActivity(new Intent(this, DashboardActivity.class));
+            }
+
+            AppLifecycleTracker.clearReauthFlag();
+            finish();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Errore autenticazione", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
+        MasterKey masterKey = new MasterKey.Builder(this)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build();
+
+        return EncryptedSharedPreferences.create(
+                this,
+                "secure_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        );
     }
 }
+

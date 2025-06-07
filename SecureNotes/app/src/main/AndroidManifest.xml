@@ -3,6 +3,7 @@
     package="com.example.securenotes">
 
     <application
+        android:name=".SecureNotesApplication"
         android:allowBackup="true"
         android:label="SecureNotes"
         android:icon="@mipmap/ic_launcher"
@@ -12,17 +13,12 @@
 
         <!-- Dashboard principale -->
         <activity android:name=".DashboardActivity" />
-
-        <!-- Editor di note -->
         <activity android:name=".NoteEditorActivity" />
-
-        <!-- Schermata fallback con PIN -->
         <activity android:name=".PinActivity" />
-
         <activity android:name=".ChangePinActivity" />
-
         <activity android:name=".SettingsActivity" />
-
+        <activity android:name=".SetupPinActivity" />
+        <activity android:name=".FileVaultActivity" />
 
 
         <!-- Schermata di login con biometria -->
@@ -33,6 +29,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.securenotes.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
 
     </application>
 
