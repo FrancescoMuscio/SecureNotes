@@ -2,6 +2,7 @@
 App Android per note e file sensibili con sicurezza avanzata
 
 Obiettivo dell'app
+
 Creare un'applicazione Android che permetta agli utenti di scrivere note personali e archiviare file sensibili (es. PDF, immagini, documenti), garantendo la massima sicurezza dei dati grazie a:
 • Autenticazione biometrica o a PIN
 • Criptazione locale end-to-end (note e file)
