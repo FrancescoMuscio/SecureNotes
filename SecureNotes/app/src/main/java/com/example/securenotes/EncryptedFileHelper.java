@@ -120,5 +120,12 @@ public class EncryptedFileHelper {
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase());
     }
 
+    public static boolean deleteEncryptedFile(Context context, String fileName) {
+        File dir = new File(context.getFilesDir(), DIR_NAME);
+        File file = new File(dir, fileName);
+        return file.exists() && file.delete();
+    }
+
+
 }
 

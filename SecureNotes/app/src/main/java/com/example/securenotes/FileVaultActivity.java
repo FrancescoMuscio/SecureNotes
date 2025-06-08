@@ -43,6 +43,27 @@ public class FileVaultActivity extends AppCompatActivity {
             EncryptedFileHelper.openEncryptedFile(this, fileName);
         });
 
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            String fileName = filenames.get(position);
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Elimina file")
+                    .setMessage("Vuoi eliminare questo file?")
+                    .setPositiveButton("Sì", (dialog, which) -> {
+                        if (EncryptedFileHelper.deleteEncryptedFile(this, fileName)) {
+                            Toast.makeText(this, "File eliminato", Toast.LENGTH_SHORT).show();
+                            refreshFileList();
+                        } else {
+                            Toast.makeText(this, "Errore durante l'eliminazione", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Annulla", null)
+                    .show();
+
+            return true;
+        });
+
+
         refreshFileList();
     }
 
@@ -92,4 +113,18 @@ public class FileVaultActivity extends AppCompatActivity {
         filenames.addAll(EncryptedFileHelper.listEncryptedFiles(this));
         adapter.notifyDataSetChanged();
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (AppLifecycleTracker.needsReauth()) {
+            AppLifecycleTracker.clearReauthFlag();
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            return;
+        }
+    }
+
 }
