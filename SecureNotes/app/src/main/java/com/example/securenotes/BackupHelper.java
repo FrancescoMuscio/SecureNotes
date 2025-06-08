@@ -1,7 +1,6 @@
 package com.example.securenotes;
 
 import android.content.Context;
-import android.os.Environment;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -15,42 +14,32 @@ import java.io.*;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 public class BackupHelper {
 
     public static File createEncryptedBackup(Context context, String password) throws Exception {
-        // 1. Crea zip temporaneo
-        File filesDir = new File(context.getFilesDir(), "secure_attachments");
         File zipFile = new File(context.getCacheDir(), "backup_temp.zip");
 
-        boolean zipCreated = false;
-
+        boolean zipCreated;
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile))) {
-            if (filesDir.exists()) {
-                File[] files = filesDir.listFiles();
-                if (files != null && files.length > 0) {
-                    for (File file : files) {
-                        try (FileInputStream fis = new FileInputStream(file)) {
-                            zos.putNextEntry(new ZipEntry(file.getName()));
-                            byte[] buffer = new byte[4096];
-                            int len;
-                            while ((len = fis.read(buffer)) != -1) {
-                                zos.write(buffer, 0, len);
-                            }
-                            zos.closeEntry();
-                            zipCreated = true;
-                        }
-                    }
-                }
-            }
+            zipCreated = false;
+
+            // Aggiungi allegati
+            File attachmentsDir = new File(context.getFilesDir(), "secure_attachments");
+            zipCreated |= zipDirectoryToZip(zos, attachmentsDir, "secure_attachments/");
+
+            // Aggiungi note
+            File notesDir = new File(context.getFilesDir(), "notes");
+            zipCreated |= zipDirectoryToZip(zos, notesDir, "notes/");
         }
 
         if (!zipCreated) {
             throw new IOException("Nessun file da includere nel backup.");
         }
 
-        // 2. Cripta zip
+        // Cripta lo zip
         File encryptedFile = new File(context.getCacheDir(), "backup_temp_encrypted.aes");
         encryptFile(zipFile, encryptedFile, password);
         zipFile.delete();
@@ -58,6 +47,30 @@ public class BackupHelper {
         return encryptedFile;
     }
 
+    private static boolean zipDirectoryToZip(ZipOutputStream zos, File dir, String zipPathPrefix) throws IOException {
+        if (!dir.exists()) return false;
+
+        File[] files = dir.listFiles();
+        boolean added = false;
+
+        if (files != null) {
+            for (File file : files) {
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    ZipEntry entry = new ZipEntry(zipPathPrefix + file.getName());
+                    zos.putNextEntry(entry);
+                    byte[] buffer = new byte[4096];
+                    int len;
+                    while ((len = fis.read(buffer)) != -1) {
+                        zos.write(buffer, 0, len);
+                    }
+                    zos.closeEntry();
+                    added = true;
+                }
+            }
+        }
+
+        return added;
+    }
 
     private static void encryptFile(File inputFile, File outputFile, String password) throws Exception {
         byte[] salt = new byte[16];
@@ -66,7 +79,6 @@ public class BackupHelper {
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
         byte[] key = factory.generateSecret(spec).getEncoded();
-
         SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
 
         byte[] iv = new byte[16];
@@ -79,7 +91,6 @@ public class BackupHelper {
              CipherOutputStream cos = new CipherOutputStream(fos, cipher);
              FileInputStream fis = new FileInputStream(inputFile)) {
 
-            // salva salt + iv all’inizio del file
             fos.write(salt);
             fos.write(iv);
 
@@ -94,7 +105,7 @@ public class BackupHelper {
     public static void restoreEncryptedBackup(Context context, File encryptedFile, String password) throws Exception {
         File tempZip = new File(context.getCacheDir(), "restored_temp.zip");
 
-        // 1. Leggi salt e iv
+        // Decrittografia
         try (FileInputStream fis = new FileInputStream(encryptedFile)) {
             byte[] salt = new byte[16];
             byte[] iv = new byte[16];
@@ -120,14 +131,23 @@ public class BackupHelper {
             }
         }
 
-        // 2. Estrai ZIP
-        File targetDir = new File(context.getFilesDir(), "secure_attachments");
-        if (!targetDir.exists()) targetDir.mkdir();
-
-        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new FileInputStream(tempZip))) {
-            java.util.zip.ZipEntry entry;
+        // Estrazione
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(tempZip))) {
+            ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                File outFile = new File(targetDir, entry.getName());
+                File outFile;
+                if (entry.getName().startsWith("secure_attachments/")) {
+                    File dir = new File(context.getFilesDir(), "secure_attachments");
+                    if (!dir.exists()) dir.mkdirs();
+                    outFile = new File(dir, entry.getName().substring("secure_attachments/".length()));
+                } else if (entry.getName().startsWith("notes/")) {
+                    File dir = new File(context.getFilesDir(), "notes");
+                    if (!dir.exists()) dir.mkdirs();
+                    outFile = new File(dir, entry.getName().substring("notes/".length()));
+                } else {
+                    continue;
+                }
+
                 try (FileOutputStream fos = new FileOutputStream(outFile)) {
                     byte[] buffer = new byte[4096];
                     int len;
@@ -135,11 +155,12 @@ public class BackupHelper {
                         fos.write(buffer, 0, len);
                     }
                 }
+
                 zis.closeEntry();
             }
         }
 
         tempZip.delete();
     }
-
 }
+

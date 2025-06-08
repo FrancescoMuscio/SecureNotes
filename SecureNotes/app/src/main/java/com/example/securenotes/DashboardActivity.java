@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -17,6 +18,7 @@ import androidx.security.crypto.MasterKey;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -102,17 +104,23 @@ public class DashboardActivity extends AppCompatActivity {
     }
 
     private void loadNoteList() {
-        try {
-            SharedPreferences prefs = getEncryptedPrefs();
-            noteIds.clear();
-            for (Map.Entry<String, ?> entry : prefs.getAll().entrySet()) {
-                noteIds.add(entry.getKey());
-            }
-            adapter.notifyDataSetChanged();
-        } catch (Exception e) {
-            e.printStackTrace();
+        File notesDir = new File(getFilesDir(), "notes");
+        if (!notesDir.exists()) {
+            notesDir.mkdirs();
         }
+
+        File[] files = notesDir.listFiles((dir, name) -> name.endsWith(".txt"));
+        noteIds.clear();
+
+        if (files != null) {
+            for (File file : files) {
+                noteIds.add(file.getName());
+            }
+        }
+
+        adapter.notifyDataSetChanged();
     }
+
 
     private void openNote(String noteId) {
         Intent intent = new Intent(this, NoteEditorActivity.class);
@@ -133,13 +141,19 @@ public class DashboardActivity extends AppCompatActivity {
 
     private void deleteNote(String noteId) {
         try {
-            SharedPreferences prefs = getEncryptedPrefs();
-            prefs.edit().remove(noteId).apply();
+            File notesDir = new File(getFilesDir(), "notes");
+            File noteFile = new File(notesDir, noteId);
+            if (noteFile.exists()) {
+                noteFile.delete();
+            }
             loadNoteList();
+            Toast.makeText(this, "Nota eliminata", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
+            Toast.makeText(this, "Errore durante l'eliminazione", Toast.LENGTH_SHORT).show();
         }
     }
+
 
     private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
         MasterKey masterKey = new MasterKey.Builder(this)
