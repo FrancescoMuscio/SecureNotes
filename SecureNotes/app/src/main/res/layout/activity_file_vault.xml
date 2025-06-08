@@ -1,21 +1,19 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="8dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?android:colorBackground">
+    android:layout_height="match_parent">
 
     <Button
         android:id="@+id/btn_add_file"
-        android:layout_width="match_parent"
+        android:layout_width="396dp"
         android:layout_height="wrap_content"
-        android:text="Aggiungi allegato" />
+        android:text="Aggiungi file" />
 
     <ListView
-        android:id="@+id/list_files"
+        android:id="@+id/list_view_files"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:dividerHeight="1dp"
-        android:layout_marginTop="16dp"/>
+        android:layout_height="match_parent"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="1dp" />
 </LinearLayout>

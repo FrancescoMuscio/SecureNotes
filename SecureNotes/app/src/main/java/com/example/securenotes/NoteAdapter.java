@@ -1,5 +1,6 @@
 package com.example.securenotes;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder> {
@@ -35,10 +39,33 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
-        String id = noteIds.get(position);
-        holder.tv.setText("Nota #" + id);
-        holder.itemView.setOnClickListener(v -> listener.onNoteClick(id));
-        holder.itemView.setOnLongClickListener(v -> {listener.onNoteLongClick(id);return true;});
+        String noteId = noteIds.get(position);
+        Context context = holder.itemView.getContext();
+
+        String title = noteId; // fallback
+
+        try {
+            File notesDir = new File(context.getFilesDir(), "notes");
+            File noteFile = new File(notesDir, noteId);
+
+            if (noteFile.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(noteFile));
+                String firstLine = reader.readLine();
+                if (firstLine != null && !firstLine.trim().isEmpty()) {
+                    title = firstLine.trim();
+                }
+                reader.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); // in produzione puoi loggare o ignorare
+        }
+
+        holder.tv.setText(title);
+        holder.itemView.setOnClickListener(v -> listener.onNoteClick(noteId));
+        holder.itemView.setOnLongClickListener(v -> {
+            listener.onNoteLongClick(noteId);
+            return true;
+        });
     }
 
     @Override
@@ -53,6 +80,5 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             tv = itemView.findViewById(R.id.tv_note_preview);
         }
     }
-
-
 }
+

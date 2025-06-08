@@ -7,84 +7,90 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.*;
 
 public class NoteEditorActivity extends AppCompatActivity {
 
+    private EditText etNoteTitle;
     private EditText etNoteContent;
     private String currentNoteId;
+    private File notesDir;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note_editor);
 
+        etNoteTitle = findViewById(R.id.et_note_title);
         etNoteContent = findViewById(R.id.et_note_content);
         Button btnSave = findViewById(R.id.btn_save_note);
 
-        // Ottieni il note_id se passato da Dashboard
+        notesDir = new File(getFilesDir(), "notes");
+        if (!notesDir.exists()) notesDir.mkdir();
+
         currentNoteId = getIntent().getStringExtra("note_id");
 
         if (currentNoteId != null) {
             loadNote(currentNoteId);
         }
 
-        btnSave.setOnClickListener(v -> {
-            saveNote();
-        });
+        btnSave.setOnClickListener(v -> saveNote());
     }
 
     private void loadNote(String noteId) {
-        try {
-            File notesDir = new File(getFilesDir(), "notes");
-            File noteFile = new File(notesDir, noteId);
+        File noteFile = new File(notesDir, noteId);
 
-            if (!noteFile.exists()) {
-                Toast.makeText(this, "Nota non trovata", Toast.LENGTH_SHORT).show();
-                return;
+        if (!noteFile.exists()) {
+            Toast.makeText(this, "Nota non trovata", Toast.LENGTH_SHORT).show();
+            finish(); // evita di lasciare l’utente in un editor vuoto
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(noteFile))) {
+            String title = reader.readLine();
+            StringBuilder content = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
             }
 
-            FileInputStream fis = new FileInputStream(noteFile);
-            byte[] content = new byte[(int) noteFile.length()];
-            fis.read(content);
-            fis.close();
+            etNoteTitle.setText(title != null ? title : "");
+            etNoteContent.setText(content.toString().trim());
 
-            etNoteContent.setText(new String(content));
-
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            Toast.makeText(this, "Errore nel caricamento", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Errore nel caricamento della nota", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 
     private void saveNote() {
-        try {
-            String content = etNoteContent.getText().toString().trim();
+        String title = etNoteTitle.getText().toString().trim();
+        String content = etNoteContent.getText().toString().trim();
 
-            if (content.isEmpty()) {
-                Toast.makeText(this, "La nota è vuota", Toast.LENGTH_SHORT).show();
-                return;
-            }
+        if (title.isEmpty()) {
+            Toast.makeText(this, "Inserisci un titolo", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-            File notesDir = new File(getFilesDir(), "notes");
-            if (!notesDir.exists()) notesDir.mkdir();
+        if (content.isEmpty()) {
+            Toast.makeText(this, "Il contenuto è vuoto", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-            // Se è una nuova nota, genera un nuovo ID
-            if (currentNoteId == null) {
-                currentNoteId = "note_" + System.currentTimeMillis() + ".txt";
-            }
+        // Se nuova nota, genera nuovo nome file
+        if (currentNoteId == null) {
+            currentNoteId = "note_" + System.currentTimeMillis() + ".txt";
+        }
 
-            File noteFile = new File(notesDir, currentNoteId);
-            FileOutputStream fos = new FileOutputStream(noteFile);
-            fos.write(content.getBytes());
-            fos.close();
+        File noteFile = new File(notesDir, currentNoteId);
 
+        try (FileOutputStream fos = new FileOutputStream(noteFile)) {
+            fos.write((title + "\n" + content).getBytes());
             Toast.makeText(this, "Nota salvata", Toast.LENGTH_SHORT).show();
             finish();
-
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
             Toast.makeText(this, "Errore nel salvataggio", Toast.LENGTH_SHORT).show();
         }

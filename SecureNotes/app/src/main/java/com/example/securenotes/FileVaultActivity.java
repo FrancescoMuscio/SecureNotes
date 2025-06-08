@@ -3,68 +3,65 @@ package com.example.securenotes;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.OpenableColumns;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FileVaultActivity extends AppCompatActivity {
 
-    private static final int PICK_FILE_REQUEST = 1;
-
+    private static final int PICK_FILE_REQUEST = 2001;
     private ListView listView;
-    private List<String> filenames;
+    private List<String> fileNames = new ArrayList<>();
     private ArrayAdapter<String> adapter;
+    private File attachmentsDir;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_vault);
 
-        Button btnAddFile = findViewById(R.id.btn_add_file);
-        listView = findViewById(R.id.list_files);
-        filenames = new ArrayList<>();
+        listView = findViewById(R.id.list_view_files);
+        attachmentsDir = new File(getFilesDir(), "secure_attachments");
+        if (!attachmentsDir.exists()) attachmentsDir.mkdirs();
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, filenames);
+        adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1, fileNames);
         listView.setAdapter(adapter);
 
-        btnAddFile.setOnClickListener(v -> pickFile());
-
         listView.setOnItemClickListener((parent, view, position, id) -> {
-            String fileName = filenames.get(position);
-            EncryptedFileHelper.openEncryptedFile(this, fileName);
+            File file = new File(attachmentsDir, fileNames.get(position));
+            openFile(file);
         });
 
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
-            String fileName = filenames.get(position);
-
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("Elimina file")
-                    .setMessage("Vuoi eliminare questo file?")
-                    .setPositiveButton("Sì", (dialog, which) -> {
-                        if (EncryptedFileHelper.deleteEncryptedFile(this, fileName)) {
-                            Toast.makeText(this, "File eliminato", Toast.LENGTH_SHORT).show();
-                            refreshFileList();
-                        } else {
-                            Toast.makeText(this, "Errore durante l'eliminazione", Toast.LENGTH_SHORT).show();
-                        }
-                    })
-                    .setNegativeButton("Annulla", null)
-                    .show();
-
+            String fileName = fileNames.get(position);
+            confirmDelete(fileName);
             return true;
         });
 
+        findViewById(R.id.btn_add_file).setOnClickListener(v -> pickFile());
 
-        refreshFileList();
+        loadFiles();
+    }
+
+    private void loadFiles() {
+        fileNames.clear();
+        File[] files = attachmentsDir.listFiles();
+        if (files != null) {
+            for (File file : files) fileNames.add(file.getName());
+        }
+        adapter.notifyDataSetChanged();
     }
 
     private void pickFile() {
@@ -75,56 +72,114 @@ public class FileVaultActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         if (requestCode == PICK_FILE_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
-            try {
-                String fileName = getFileName(uri);
-                InputStream inputStream = getContentResolver().openInputStream(uri);
-                if (inputStream != null) {
-                    EncryptedFileHelper.saveEncryptedFile(this, fileName, inputStream);
-                    Toast.makeText(this, "File salvato", Toast.LENGTH_SHORT).show();
-                    refreshFileList();
+            if (uri == null) {
+                Toast.makeText(this, "File non valido", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String fileName = getFileNameFromUri(uri);
+            if (fileName == null) {
+                Toast.makeText(this, "Impossibile ottenere il nome del file", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            try (InputStream in = getContentResolver().openInputStream(uri);
+                 FileOutputStream out = new FileOutputStream(new File(attachmentsDir, fileName))) {
+
+                if (in == null) throw new IOException("InputStream nullo");
+
+                byte[] buf = new byte[4096];
+                int len;
+                while ((len = in.read(buf)) != -1) {
+                    out.write(buf, 0, len);
+                }
+
+                Toast.makeText(this, "File aggiunto con successo", Toast.LENGTH_SHORT).show();
+                loadFiles();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Errore import file", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+    }
+
+    private void confirmDelete(String fileName) {
+        new AlertDialog.Builder(this)
+                .setTitle("Elimina file")
+                .setMessage("Vuoi eliminare " + fileName + "?")
+                .setPositiveButton("Sì", (dialog, which) -> deleteAttachment(fileName))
+                .setNegativeButton("Annulla", null)
+                .show();
+    }
+
+    private void deleteAttachment(String fileName) {
+        File file = new File(attachmentsDir, fileName);
+        if (file.exists() && file.delete()) {
+            Toast.makeText(this, "File eliminato", Toast.LENGTH_SHORT).show();
+            loadFiles();
+        } else Toast.makeText(this, "Errore durante l'eliminazione", Toast.LENGTH_SHORT).show();
+    }
+
+    private void openFile(File file) {
+        try {
+            Uri uri = FileProvider.getUriForFile(
+                    this,
+                    "com.example.securenotes.fileprovider",
+                    file
+            );
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, getMimeType(file.getName()));
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(intent);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Impossibile aprire il file", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String getMimeType(String fn) {
+        String ext = fn.substring(fn.lastIndexOf('.') + 1).toLowerCase();
+        switch (ext) {
+            case "jpg": case "jpeg": return "image/jpeg";
+            case "png": return "image/png";
+            case "pdf": return "application/pdf";
+            case "txt": return "text/plain";
+            default: return "*/*";
+        }
+    }
+
+    private String getFileNameFromUri(Uri uri) {
+        String result = null;
+        if ("content".equals(uri.getScheme())) {
+            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex >= 0) {
+                        result = cursor.getString(nameIndex);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                Toast.makeText(this, "Errore durante il salvataggio", Toast.LENGTH_SHORT).show();
             }
         }
-    }
-
-    private String getFileName(Uri uri) {
-        String name = "allegato_" + System.currentTimeMillis();
-        try (var cursor = getContentResolver().query(uri, null, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                if (nameIndex >= 0) {
-                    name = cursor.getString(nameIndex);
-                }
+        if (result == null) {
+            // Fallback: prendi da path
+            result = uri.getPath();
+            int cut = result != null ? result.lastIndexOf('/') : -1;
+            if (cut != -1 && result != null) {
+                result = result.substring(cut + 1);
             }
         }
-        return name;
-    }
-
-    private void refreshFileList() {
-        filenames.clear();
-        filenames.addAll(EncryptedFileHelper.listEncryptedFiles(this));
-        adapter.notifyDataSetChanged();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (AppLifecycleTracker.needsReauth()) {
-            AppLifecycleTracker.clearReauthFlag();
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            return;
-        }
+        return result;
     }
 
 }
+
