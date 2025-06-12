@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <EditText
+        android:id="@+id/et_note_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Titolo"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:inputType="text"
+        android:layout_marginBottom="8dp"
+        android:textColor="?android:textColorPrimary"
+        android:textColorHint="@android:color/darker_gray"/>
+
+
+    <EditText
+        android:id="@+id/et_note_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:hint="Scrivi la tua nota qui..."
+        android:inputType="textMultiLine"
+        android:gravity="top"
+        android:textSize="16sp"
+        android:background="?android:colorBackground"
+        android:textColor="?android:textColorPrimary"
+        app:hintTextColor="?android:textColorSecondary" />
+
+
+
+    <Button
+        android:id="@+id/btn_save_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Salva nota"
+        android:layout_marginTop="16dp"/>
+</LinearLayout>
