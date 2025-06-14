@@ -84,10 +84,10 @@ Sono stati utilizzati strumenti come **R8/ProGuard**, con configurazioni ottimiz
 -  Codice sorgente su GitHub/GitLab
 -  APK firmato (release)
 -  Documento tecnico (5-6 pagine):
-  - Architettura
-  - Meccanismi di sicurezza
-  - Tecnologie utilizzate
-  - Limiti e miglioramenti futuri
+    - Architettura
+    - Meccanismi di sicurezza
+    - Tecnologie utilizzate
+    - Limiti e miglioramenti futuri
 
 ##  Tecnologie Consigliate
 
