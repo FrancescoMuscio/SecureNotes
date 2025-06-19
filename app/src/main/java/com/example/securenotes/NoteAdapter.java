@@ -1,6 +1,5 @@
 package com.example.securenotes;
 
-import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,23 +8,20 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder> {
-
-    private final List<String> noteIds;
-    private final OnNoteClickListener listener;
 
     public interface OnNoteClickListener {
         void onNoteClick(String noteId);
         void onNoteLongClick(String noteId);
     }
 
-    public NoteAdapter(List<String> noteIds, OnNoteClickListener listener) {
-        this.noteIds = noteIds;
+    private final List<DashboardActivity.NotePreview> notes;
+    private final OnNoteClickListener listener;
+
+    public NoteAdapter(List<DashboardActivity.NotePreview> notes, OnNoteClickListener listener) {
+        this.notes = notes;
         this.listener = listener;
     }
 
@@ -39,38 +35,18 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
-        String noteId = noteIds.get(position);
-        Context context = holder.itemView.getContext();
-
-        String title = noteId; // fallback
-
-        try {
-            File notesDir = new File(context.getFilesDir(), "notes");
-            File noteFile = new File(notesDir, noteId);
-
-            if (noteFile.exists()) {
-                BufferedReader reader = new BufferedReader(new FileReader(noteFile));
-                String firstLine = reader.readLine();
-                if (firstLine != null && !firstLine.trim().isEmpty()) {
-                    title = firstLine.trim();
-                }
-                reader.close();
-            }
-        } catch (Exception e) {
-            e.printStackTrace(); // in produzione puoi loggare o ignorare
-        }
-
-        holder.tv.setText(title);
-        holder.itemView.setOnClickListener(v -> listener.onNoteClick(noteId));
+        DashboardActivity.NotePreview note = notes.get(position);
+        holder.tv.setText(note.title);
+        holder.itemView.setOnClickListener(v -> listener.onNoteClick(note.fileName));
         holder.itemView.setOnLongClickListener(v -> {
-            listener.onNoteLongClick(noteId);
+            listener.onNoteLongClick(note.fileName);
             return true;
         });
     }
 
     @Override
     public int getItemCount() {
-        return noteIds.size();
+        return notes.size();
     }
 
     static class NoteViewHolder extends RecyclerView.ViewHolder {
@@ -81,4 +57,6 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         }
     }
 }
+
+
 

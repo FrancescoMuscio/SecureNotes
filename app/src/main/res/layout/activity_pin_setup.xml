@@ -1,26 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="32dp"
-    android:gravity="center"
-    android:background="?android:colorBackground">
+    android:gravity="center">
 
     <EditText
         android:id="@+id/et_pin_setup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Scegli un PIN"
-        android:inputType="numberPassword"
-        android:textColor="?android:textColorPrimary"
-        app:hintTextColor="?android:textColorSecondary"
-        android:background="?android:colorBackground" />
+        android:inputType="numberPassword" />
 
     <Button
         android:id="@+id/btn_set_pin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Imposta PIN"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp" />
 </LinearLayout>

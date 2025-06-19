@@ -23,16 +23,14 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class DashboardActivity extends AppCompatActivity {
 
     private Handler timeoutHandler = new Handler();
     private Runnable timeoutRunnable;
-    private List<String> noteIds = new ArrayList<>();
     private NoteAdapter adapter;
     private boolean wasInBackground = false;
-
+    private List<NotePreview> notes = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +39,7 @@ public class DashboardActivity extends AppCompatActivity {
 
         RecyclerView recyclerView = findViewById(R.id.recycler_notes);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new NoteAdapter(noteIds, new NoteAdapter.OnNoteClickListener() {
+        adapter = new NoteAdapter(notes, new NoteAdapter.OnNoteClickListener() {
             @Override
             public void onNoteClick(String noteId) {
                 openNote(noteId);
@@ -104,23 +102,24 @@ public class DashboardActivity extends AppCompatActivity {
     }
 
     private void loadNoteList() {
+        notes.clear();
         File notesDir = new File(getFilesDir(), "notes");
-        if (!notesDir.exists()) {
-            notesDir.mkdirs();
-        }
+        if (!notesDir.exists()) notesDir.mkdirs();
 
-        File[] files = notesDir.listFiles((dir, name) -> name.endsWith(".txt"));
-        noteIds.clear();
-
+        File[] files = notesDir.listFiles();
         if (files != null) {
-            for (File file : files) {
-                noteIds.add(file.getName());
+            for (File f : files) {
+                try {
+                    String text = EncryptedFileHelper.readEncryptedTextFile(this, f);
+                    String title = text.split("\n", 2)[0];
+                    notes.add(new NotePreview(f.getName(), title));
+                } catch (Exception e) {
+                    // ignora file corrotti o accesso negato
+                }
             }
         }
-
         adapter.notifyDataSetChanged();
     }
-
 
     private void openNote(String noteId) {
         Intent intent = new Intent(this, NoteEditorActivity.class);
@@ -154,7 +153,6 @@ public class DashboardActivity extends AppCompatActivity {
         }
     }
 
-
     private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
         MasterKey masterKey = new MasterKey.Builder(this)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -169,7 +167,7 @@ public class DashboardActivity extends AppCompatActivity {
         );
     }
 
-    // Menu: impostazioni e cambio PIN
+    // Menu impostazioni e allegati
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.dashboard_menu, menu);
@@ -183,7 +181,6 @@ public class DashboardActivity extends AppCompatActivity {
         if (id == R.id.action_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
-
         } else if (id == R.id.action_file_vault) {
             startActivity(new Intent(this, FileVaultActivity.class));
             return true;
@@ -192,12 +189,22 @@ public class DashboardActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-
     @Override
     protected void onStop() {
         super.onStop();
         wasInBackground = true;
     }
 
+    // Preview oggetto nota con titolo + nome file
+    public static class NotePreview {
+        public final String fileName;
+        public final String title;
+
+        public NotePreview(String fileName, String title) {
+            this.fileName = fileName;
+            this.title = title;
+        }
+    }
 }
+
 

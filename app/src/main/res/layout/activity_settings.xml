@@ -80,20 +80,37 @@
             android:text="Cambia PIN"
             android:layout_marginTop="16dp" />
 
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="24dp"
+            android:background="?android:textColorSecondary" />
+
         <Button
             android:id="@+id/btn_backup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Esegui backup"
-            android:layout_marginTop="32dp"/>
+            android:text="Esegui backup" />
 
         <Button
             android:id="@+id/btn_restore"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Ripristina backup"
-            android:layout_marginTop="16dp" />
+            android:text="Ripristina backup" />
 
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="24dp"
+            android:background="?android:textColorSecondary" />
+
+        <Button
+            android:id="@+id/btn_choose_theme"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Scegli tema" />
 
     </LinearLayout>
 </ScrollView>

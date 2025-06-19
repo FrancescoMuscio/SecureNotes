@@ -27,13 +27,26 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 🔐 Controlla se il PIN esiste. Se no, forza setup.
+        try {
+            if (!isPinSet()) {
+                startActivity(new Intent(this, SetupPinActivity.class));
+                finish();
+                return;
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Errore accesso protetto", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_login);
 
         tvStatus = findViewById(R.id.tv_status);
         btnUsePin = findViewById(R.id.btn_use_pin);
 
         BiometricManager biometricManager = BiometricManager.from(this);
-
         if (biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS) {
             showBiometricPrompt();
         } else {
@@ -42,108 +55,81 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         btnUsePin.setOnClickListener(v -> {
-            try {
-                SharedPreferences prefs = getEncryptedPrefs();
-                String savedPin = prefs.getString("user_pin", null);
-
-                if (savedPin == null) {
-                    startActivity(new Intent(this, ChangePinActivity.class));
-                } else {
-                    startActivity(new Intent(this, PinActivity.class));
-                }
-
-                finish();
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Errore nel controllo PIN", Toast.LENGTH_SHORT).show();
-            }
+            Intent intent = new Intent(this, PinActivity.class);
+            startActivityForResult(intent, 1001);
         });
+    }
+
+    private boolean isPinSet() throws GeneralSecurityException, IOException {
+        SharedPreferences prefs = getEncryptedPrefs();
+        return prefs.getString("user_pin", null) != null;
     }
 
     private void showBiometricPrompt() {
         Executor executor = ContextCompat.getMainExecutor(this);
+        BiometricPrompt prompt = new BiometricPrompt(this, executor,
+                new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                        goToDashboard();
+                    }
 
-        BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
-            @Override
-            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                super.onAuthenticationSucceeded(result);
-                goToDashboard();
-            }
+                    @Override
+                    public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                        if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                            // Porta alla schermata PIN
+                            Intent intent = new Intent(LoginActivity.this, PinActivity.class);
+                            startActivityForResult(intent, 1001);
+                        } else if(errorCode == BiometricPrompt.ERROR_USER_CANCELED ||    // Chiude prompt con indietro
+                                errorCode == BiometricPrompt.ERROR_LOCKOUT){          // Troppi tentativi errati
+                                    finishAffinity();
+                        } else{
+                            Toast.makeText(LoginActivity.this, "Errore: " + errString, Toast.LENGTH_SHORT).show();
+                        }
+                    }
 
-            @Override
-            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                super.onAuthenticationError(errorCode, errString);
-                fallbackToPinOrSetup();
-            }
 
-            @Override
-            public void onAuthenticationFailed() {
-                super.onAuthenticationFailed();
-                Toast.makeText(LoginActivity.this, "Autenticazione fallita", Toast.LENGTH_SHORT).show();
-            }
-        });
+                    @Override
+                    public void onAuthenticationFailed() {
+                        Toast.makeText(LoginActivity.this, "Impronta non riconosciuta", Toast.LENGTH_SHORT).show();
+                    }
+                });
 
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Accesso biometrico")
                 .setSubtitle("Sblocca SecureNotes")
-                .setNegativeButtonText("Usa PIN")
+                .setNegativeButtonText("Usa Pin")
                 .build();
 
         prompt.authenticate(promptInfo);
     }
 
-    private void fallbackToPinOrSetup() {
-        try {
-            SharedPreferences prefs = getEncryptedPrefs();
-            String savedPin = prefs.getString("user_pin", null);
-
-            if (savedPin == null) {
-                startActivity(new Intent(this, SetupPinActivity.class));
-            } else {
-                startActivity(new Intent(this, PinActivity.class));
-            }
-
-            finish();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Errore nel fallback", Toast.LENGTH_SHORT).show();
-        }
+    private void goToDashboard() {
+        AppLifecycleTracker.clearReauthFlag();
+        startActivity(new Intent(this, DashboardActivity.class));
+        finish();
     }
 
-    private void goToDashboard() {
-        try {
-            SharedPreferences prefs = getEncryptedPrefs();
-            String savedPin = prefs.getString("user_pin", null);
-
-            if (savedPin == null) {
-                startActivity(new Intent(this, SetupPinActivity.class));
-            } else {
-                startActivity(new Intent(this, DashboardActivity.class));
-            }
-
-            AppLifecycleTracker.clearReauthFlag();
-            finish();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Errore autenticazione", Toast.LENGTH_SHORT).show();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == 1001 && resultCode == RESULT_OK) {
+            goToDashboard();
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
         }
     }
 
     private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
-        MasterKey masterKey = new MasterKey.Builder(this)
+        MasterKey key = new MasterKey.Builder(this)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build();
 
         return EncryptedSharedPreferences.create(
                 this,
                 "secure_prefs",
-                masterKey,
+                key,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         );
     }
 }
-

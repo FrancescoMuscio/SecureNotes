@@ -1,39 +1,21 @@
 package com.example.securenotes;
 
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
-import android.webkit.MimeTypeMap;
-import android.widget.Toast;
+import android.util.Log;
 
-import androidx.core.content.FileProvider;
 import androidx.security.crypto.EncryptedFile;
 import androidx.security.crypto.MasterKey;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class EncryptedFileHelper {
 
-    private static final String DIR_NAME = "secure_attachments";
+    public static void saveEncryptedTextFile(Context context, File file, String text) throws IOException, GeneralSecurityException {
+        if (file.exists()) file.delete();
 
-    public static void saveEncryptedFile(Context context, String fileName, InputStream inputStream)
-            throws Exception {
-
-        File dir = new File(context.getFilesDir(), DIR_NAME);
-        if (!dir.exists()) dir.mkdir();
-
-        File file = new File(dir, fileName);
-
-        MasterKey masterKey = new MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build();
+        MasterKey masterKey = getMasterKey(context);
 
         EncryptedFile encryptedFile = new EncryptedFile.Builder(
                 context,
@@ -43,89 +25,85 @@ public class EncryptedFileHelper {
         ).build();
 
         try (FileOutputStream fos = encryptedFile.openFileOutput()) {
+            fos.write(text.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    public static String readEncryptedTextFile(Context context, File file) throws IOException, GeneralSecurityException {
+        MasterKey masterKey = getMasterKey(context);
+
+        EncryptedFile encryptedFile = new EncryptedFile.Builder(
+                context,
+                file,
+                masterKey,
+                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+        ).build();
+
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(encryptedFile.openFileInput()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    public static void saveEncryptedBinaryFile(Context context, File file, InputStream in) throws IOException, GeneralSecurityException {
+        if (file.exists()) file.delete();
+
+        MasterKey masterKey = getMasterKey(context);
+
+        EncryptedFile encryptedFile = new EncryptedFile.Builder(
+                context,
+                file,
+                masterKey,
+                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+        ).build();
+
+        try (OutputStream out = encryptedFile.openFileOutput()) {
             byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                fos.write(buffer, 0, bytesRead);
+            int len;
+            while ((len = in.read(buffer)) != -1) {
+                out.write(buffer, 0, len);
             }
         }
     }
 
-    public static List<String> listEncryptedFiles(Context context) {
-        File dir = new File(context.getFilesDir(), DIR_NAME);
-        if (!dir.exists()) return new ArrayList<>();
+    public static File decryptToTempFile(Context context, File encryptedFile, String outputName) throws IOException, GeneralSecurityException {
+        MasterKey masterKey = getMasterKey(context);
 
-        String[] files = dir.list();
-        return files != null ? Arrays.asList(files) : new ArrayList<>();
+        EncryptedFile ef = new EncryptedFile.Builder(
+                context,
+                encryptedFile,
+                masterKey,
+                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+        ).build();
+
+        File temp = new File(context.getCacheDir(), outputName);
+
+        try (InputStream in = ef.openFileInput();
+             OutputStream out = new FileOutputStream(temp)) {
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = in.read(buffer)) != -1) {
+                out.write(buffer, 0, len);
+            }
+        }
+
+        return temp;
     }
 
-    public static void openEncryptedFile(Context context, String fileName) {
+    public static MasterKey getMasterKey(Context context) throws GeneralSecurityException, IOException {
         try {
-            File dir = new File(context.getFilesDir(), DIR_NAME);
-            File encryptedFile = new File(dir, fileName);
-
-            String extension = getFileExtension(fileName);
-            File tempFile = new File(context.getCacheDir(), "temp_" + System.currentTimeMillis() + extension);
-
             MasterKey masterKey = new MasterKey.Builder(context)
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .setUserAuthenticationRequired(true)
                     .build();
-
-            EncryptedFile ef = new EncryptedFile.Builder(
-                    context,
-                    encryptedFile,
-                    masterKey,
-                    EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build();
-
-            try (InputStream is = ef.openFileInput(); FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
-                }
-            }
-
-            Uri uri = FileProvider.getUriForFile(
-                    context,
-                    context.getPackageName() + ".provider",
-                    tempFile
-            );
-
-            String mimeType = getMimeType(extension);
-            if (mimeType == null) mimeType = "*/*";
-
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, mimeType);
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            context.startActivity(Intent.createChooser(intent, "Apri con"));
-
+            return masterKey;
         } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(context, "Impossibile aprire il file", Toast.LENGTH_SHORT).show();
+            Log.e("EncryptedFileHelper", "Errore creazione MasterKey", e);
+            throw e; // re-throw per gestirlo fuori
         }
     }
-
-
-    private static String getFileExtension(String fileName) {
-        int dot = fileName.lastIndexOf('.');
-        return (dot != -1) ? fileName.substring(dot) : "";
-    }
-
-    private static String getMimeType(String extension) {
-        if (extension.startsWith(".")) {
-            extension = extension.substring(1);
-        }
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase());
-    }
-
-    public static boolean deleteEncryptedFile(Context context, String fileName) {
-        File dir = new File(context.getFilesDir(), DIR_NAME);
-        File file = new File(dir, fileName);
-        return file.exists() && file.delete();
-    }
-
-
 }
-

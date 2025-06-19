@@ -12,8 +12,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +19,10 @@ import java.util.List;
 public class FileVaultActivity extends AppCompatActivity {
 
     private static final int PICK_FILE_REQUEST = 2001;
-    private static final int AUTH_REQUEST_CODE = 999;
-
     private ListView listView;
     private List<String> fileNames = new ArrayList<>();
     private ArrayAdapter<String> adapter;
     private File attachmentsDir;
-    private File fileToOpenAfterAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,22 +33,13 @@ public class FileVaultActivity extends AppCompatActivity {
         attachmentsDir = new File(getFilesDir(), "secure_attachments");
         if (!attachmentsDir.exists()) attachmentsDir.mkdirs();
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, fileNames);
+        adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1, fileNames);
         listView.setAdapter(adapter);
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
-            fileToOpenAfterAuth = new File(attachmentsDir, fileNames.get(position));
-            AuthHelper.authenticate(this, new AuthHelper.AuthCallback() {
-                @Override
-                public void onSuccess() {
-                    apriFileFisicamente(fileToOpenAfterAuth);
-                }
-
-                @Override
-                public void onFailure() {
-                    Toast.makeText(FileVaultActivity.this, "Autenticazione fallita", Toast.LENGTH_SHORT).show();
-                }
-            });
+            File file = new File(attachmentsDir, fileNames.get(position));
+            openEncryptedFile(file, fileNames.get(position));
         });
 
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
@@ -83,6 +69,67 @@ public class FileVaultActivity extends AppCompatActivity {
         startActivityForResult(intent, PICK_FILE_REQUEST);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_FILE_REQUEST && resultCode == RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri == null) {
+                Toast.makeText(this, "File non valido", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String fileName = getFileNameFromUri(uri);
+            if (fileName == null) {
+                Toast.makeText(this, "Impossibile ottenere il nome del file", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            File newFile = getUniqueFileName(attachmentsDir, fileName);
+
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                EncryptedFileHelper.saveEncryptedBinaryFile(this, newFile, in);
+                Toast.makeText(this, "File aggiunto", Toast.LENGTH_SHORT).show();
+                loadFiles();
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Errore import file", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void openEncryptedFile(File encryptedFile, String originalName) {
+        AuthHelper.authenticate(this, new AuthHelper.AuthCallback() {
+            @Override
+            public void onSuccess() {
+                try {
+                    File decryptedTemp = EncryptedFileHelper.decryptToTempFile(
+                            FileVaultActivity.this, encryptedFile, originalName
+                    );
+
+                    Uri uri = FileProvider.getUriForFile(
+                            FileVaultActivity.this,
+                            "com.example.securenotes.fileprovider",
+                            decryptedTemp
+                    );
+
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(uri, getMimeType(originalName));
+                    intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(FileVaultActivity.this, "Errore apertura file", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure() {
+                Toast.makeText(FileVaultActivity.this, "Autenticazione fallita", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void confirmDelete(String fileName) {
         new AlertDialog.Builder(this)
                 .setTitle("Elimina file")
@@ -102,33 +149,6 @@ public class FileVaultActivity extends AppCompatActivity {
         }
     }
 
-    private void apriFileFisicamente(File file) {
-        try {
-            Uri uri = FileProvider.getUriForFile(
-                    this,
-                    "com.example.securenotes.fileprovider",
-                    file
-            );
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, getMimeType(file.getName()));
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Errore apertura file", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private String getMimeType(String fn) {
-        String ext = fn.substring(fn.lastIndexOf('.') + 1).toLowerCase();
-        switch (ext) {
-            case "jpg": case "jpeg": return "image/jpeg";
-            case "png": return "image/png";
-            case "pdf": return "application/pdf";
-            case "txt": return "text/plain";
-            default: return "*/*";
-        }
-    }
-
     private String getFileNameFromUri(Uri uri) {
         String result = null;
         if ("content".equals(uri.getScheme())) {
@@ -143,11 +163,10 @@ public class FileVaultActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
-        if (result == null) {
-            result = uri.getPath();
-            int cut = result != null ? result.lastIndexOf('/') : -1;
-            if (cut != -1 && result != null) {
-                result = result.substring(cut + 1);
+        if (result == null && uri.getPath() != null) {
+            int cut = uri.getPath().lastIndexOf('/');
+            if (cut != -1) {
+                result = uri.getPath().substring(cut + 1);
             }
         }
         return result;
@@ -157,60 +176,32 @@ public class FileVaultActivity extends AppCompatActivity {
         File file = new File(dir, originalName);
         if (!file.exists()) return file;
 
-        String baseName = originalName;
-        String extension = "";
-        int dotIndex = originalName.lastIndexOf('.');
-        if (dotIndex != -1) {
-            baseName = originalName.substring(0, dotIndex);
-            extension = originalName.substring(dotIndex);
+        String base = originalName;
+        String ext = "";
+        int dot = base.lastIndexOf('.');
+        if (dot != -1) {
+            ext = base.substring(dot);
+            base = base.substring(0, dot);
         }
 
-        int index = 1;
+        int i = 1;
         while (file.exists()) {
-            file = new File(dir, baseName + "(" + index + ")" + extension);
-            index++;
+            file = new File(dir, base + "(" + i + ")" + ext);
+            i++;
         }
+
         return file;
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_FILE_REQUEST && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri == null) {
-                Toast.makeText(this, "File non valido", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String fileName = getFileNameFromUri(uri);
-            if (fileName == null) {
-                Toast.makeText(this, "Impossibile ottenere il nome del file", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            File newFile = getUniqueFileName(attachmentsDir, fileName);
-
-            try (InputStream in = getContentResolver().openInputStream(uri);
-                 FileOutputStream out = new FileOutputStream(newFile)) {
-
-                if (in == null) throw new IOException("InputStream nullo");
-
-                byte[] buf = new byte[4096];
-                int len;
-                while ((len = in.read(buf)) != -1) {
-                    out.write(buf, 0, len);
-                }
-
-                Toast.makeText(this, "File aggiunto con successo", Toast.LENGTH_SHORT).show();
-                loadFiles();
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Errore import file", Toast.LENGTH_SHORT).show();
-            }
-        } else if (requestCode == AUTH_REQUEST_CODE && resultCode == RESULT_OK && fileToOpenAfterAuth != null) {
-            apriFileFisicamente(fileToOpenAfterAuth);
+    private String getMimeType(String filename) {
+        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+        switch (ext) {
+            case "jpg":
+            case "jpeg": return "image/jpeg";
+            case "png": return "image/png";
+            case "pdf": return "application/pdf";
+            case "txt": return "text/plain";
+            default: return "*/*";
         }
     }
 }

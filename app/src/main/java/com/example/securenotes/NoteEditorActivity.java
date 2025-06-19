@@ -8,7 +8,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.*;
+import java.io.File;
 
 public class NoteEditorActivity extends AppCompatActivity {
 
@@ -16,7 +16,6 @@ public class NoteEditorActivity extends AppCompatActivity {
     private EditText etNoteContent;
     private String currentNoteId;
     private File notesDir;
-    private boolean authenticated = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,24 +24,28 @@ public class NoteEditorActivity extends AppCompatActivity {
         AuthHelper.authenticate(this, new AuthHelper.AuthCallback() {
             @Override
             public void onSuccess() {
-                authenticated = true;
-                setupUI();
+                try {
+                    EncryptedFileHelper.getMasterKey(getApplicationContext()); // forza Keystore
+                    setupUI();
+                } catch (Exception e) {
+                    Toast.makeText(NoteEditorActivity.this, "Errore Keystore", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
             }
 
             @Override
             public void onFailure() {
-                finish(); // blocca accesso
+                finish();
             }
         });
     }
 
     private void setupUI() {
         setContentView(R.layout.activity_note_editor);
-
         etNoteTitle = findViewById(R.id.et_note_title);
         etNoteContent = findViewById(R.id.et_note_content);
         notesDir = new File(getFilesDir(), "notes");
-        if (!notesDir.exists()) notesDir.mkdir();
+        if (!notesDir.exists()) notesDir.mkdirs();
 
         currentNoteId = getIntent().getStringExtra("note_id");
         if (currentNoteId != null) loadNote(currentNoteId);
@@ -53,26 +56,14 @@ public class NoteEditorActivity extends AppCompatActivity {
 
     private void loadNote(String noteId) {
         File noteFile = new File(notesDir, noteId);
-        if (!noteFile.exists()) {
-            Toast.makeText(this, "Nota non trovata", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(noteFile))) {
-            String title = reader.readLine();
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line).append("\n");
-            }
-
-            etNoteTitle.setText(title != null ? title : "");
-            etNoteContent.setText(content.toString().trim());
-
-        } catch (IOException e) {
+        try {
+            String fullText = EncryptedFileHelper.readEncryptedTextFile(this, noteFile);
+            String[] lines = fullText.split("\n", 2);
+            etNoteTitle.setText(lines.length > 0 ? lines[0] : "");
+            etNoteContent.setText(lines.length > 1 ? lines[1] : "");
+        } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "Errore nel caricamento", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Errore caricamento nota", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -96,27 +87,19 @@ public class NoteEditorActivity extends AppCompatActivity {
         }
 
         File noteFile = new File(notesDir, currentNoteId);
+        String fullText = title + "\n" + content;
 
-        try (FileOutputStream fos = new FileOutputStream(noteFile)) {
-            fos.write((title + "\n" + content).getBytes());
+        try {
+            EncryptedFileHelper.saveEncryptedTextFile(this, noteFile, fullText);
             Toast.makeText(this, "Nota salvata", Toast.LENGTH_SHORT).show();
             finish();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "Errore nel salvataggio", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 999) {
-            if (resultCode == RESULT_OK && !authenticated) {
-                authenticated = true;
-                setupUI();
-            } else {
-                finish(); // autenticazione fallita
-            }
+            Toast.makeText(this, "Errore salvataggio", Toast.LENGTH_SHORT).show();
         }
     }
 }
+
+
+
+

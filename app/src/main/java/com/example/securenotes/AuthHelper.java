@@ -18,45 +18,40 @@ public class AuthHelper {
     }
 
     public static void authenticate(FragmentActivity activity, AuthCallback callback) {
-        BiometricManager biometricManager = BiometricManager.from(activity);
+        BiometricManager manager = BiometricManager.from(activity);
         Executor executor = ContextCompat.getMainExecutor(activity);
 
-        BiometricPrompt prompt = new BiometricPrompt(
-                activity,
-                executor,
-                new BiometricPrompt.AuthenticationCallback() {
-                    @Override
-                    public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
-                        callback.onSuccess();
-                    }
+        BiometricPrompt prompt = new BiometricPrompt(activity, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                callback.onSuccess();
+            }
 
-                    @Override
-                    public void onAuthenticationError(int errorCode, CharSequence errString) {
-                        if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                            Intent intent = new Intent(activity, PinActivity.class);
-                            activity.startActivityForResult(intent, 999);
-                        } else {
-                            callback.onFailure();
-                        }
-                    }
+            @Override
+            public void onAuthenticationError(int errorCode, CharSequence errString) {
+                // Qualsiasi errore (incluso Annulla) porta a fallimento
+                callback.onFailure();
+            }
 
-                    @Override
-                    public void onAuthenticationFailed() {
-                        // lasciamo che l’utente riprovi
-                    }
-                });
+
+            @Override
+            public void onAuthenticationFailed() {
+                // puoi loggare o ignorare
+            }
+        });
 
         BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Autenticazione richiesta")
-                .setSubtitle("Biometria o PIN")
-                .setNegativeButtonText("Usa PIN")
+                .setSubtitle("Usa impronta")
+                .setNegativeButtonText("Annulla")
                 .build();
 
-        if (biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS) {
+        if (manager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS) {
             prompt.authenticate(info);
         } else {
-            Intent intent = new Intent(activity, PinActivity.class);
-            activity.startActivityForResult(intent, 999);
+            activity.startActivityForResult(new Intent(activity, PinActivity.class), 999);
         }
     }
 }
+
+

@@ -145,6 +145,36 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
+
+        findViewById(R.id.btn_choose_theme).setOnClickListener(v -> {
+            String[] options = {"Chiaro", "Scuro", "Segui sistema"};
+            String[] values = {"light", "dark", "system"};
+
+            // Prendi il tema attuale
+            String current = getSharedPreferences("settings", MODE_PRIVATE)
+                    .getString("theme_mode", "light");
+
+            int checkedItem = 0;
+            for (int i = 0; i < values.length; i++) {
+                if (values[i].equals(current)) {
+                    checkedItem = i;
+                    break;
+                }
+            }
+
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Scegli tema")
+                    .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
+                        ThemeUtils.setTheme(this, values[which]);
+                        dialog.dismiss();
+                        recreate(); // ricarica activity
+                    })
+                    .setNegativeButton("Annulla", null)
+                    .show();
+        });
+
+
+
     }
 
     @Override
