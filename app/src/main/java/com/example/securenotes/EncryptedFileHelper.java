@@ -94,6 +94,20 @@ public class EncryptedFileHelper {
         return temp;
     }
 
+    public static InputStream openDecryptedInputStream(Context context, File file) throws IOException, GeneralSecurityException {
+        MasterKey masterKey = getMasterKey(context);
+
+        EncryptedFile encryptedFile = new EncryptedFile.Builder(
+                context,
+                file,
+                masterKey,
+                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+        ).build();
+
+        return encryptedFile.openFileInput();
+    }
+
+
     public static MasterKey getMasterKey(Context context) throws GeneralSecurityException, IOException {
         try {
             MasterKey masterKey = new MasterKey.Builder(context)
