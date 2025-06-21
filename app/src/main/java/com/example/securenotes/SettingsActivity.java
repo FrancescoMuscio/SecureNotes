@@ -22,16 +22,22 @@ public class SettingsActivity extends AppCompatActivity {
     private EditText etTimeout, etOldPin, etNewPin;
     private String backupPasswordTemp;
     private String restorePasswordTemp;
-    private Uri pendingBackupUri;
 
     private final ActivityResultLauncher<Intent> exportLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    pendingBackupUri = result.getData().getData();
-                    if (pendingBackupUri != null && backupPasswordTemp != null) {
+                    Uri destinationUri = result.getData().getData();
+                    String password = backupPasswordTemp;
+
+                    if (destinationUri != null && password != null) {
+                        getContentResolver().takePersistableUriPermission(
+                                destinationUri,
+                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+
                         new Thread(() -> {
                             try {
-                                AESBackupHelper.createEncryptedBackup(this, pendingBackupUri, backupPasswordTemp);
+                                AESBackupHelper.createEncryptedBackup(this, destinationUri, password);
                                 runOnUiThread(() -> toast("Backup completato con successo"));
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -46,10 +52,17 @@ public class SettingsActivity extends AppCompatActivity {
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri uri = result.getData().getData();
-                    if (uri != null && restorePasswordTemp != null) {
+                    String password = restorePasswordTemp;
+
+                    if (uri != null && password != null) {
+                        getContentResolver().takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+
                         new Thread(() -> {
                             try {
-                                AESBackupHelper.restoreEncryptedBackup(this, uri, restorePasswordTemp);
+                                AESBackupHelper.restoreEncryptedBackup(this, uri, password);
                                 runOnUiThread(() -> toast("Backup ripristinato con successo"));
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -138,9 +151,11 @@ public class SettingsActivity extends AppCompatActivity {
                         }
 
                         backupPasswordTemp = password;
+
                         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                         intent.setType("application/octet-stream");
                         intent.putExtra(Intent.EXTRA_TITLE, "secure_notes_backup.aes");
+                        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         exportLauncher.launch(intent);
                     })
                     .setNegativeButton("Annulla", null)
@@ -163,9 +178,11 @@ public class SettingsActivity extends AppCompatActivity {
                         }
 
                         restorePasswordTemp = password;
+
                         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                         intent.setType("*/*");
                         intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         importLauncher.launch(intent);
                     })
                     .setNegativeButton("Annulla", null)
@@ -228,3 +245,5 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 }
+
+
