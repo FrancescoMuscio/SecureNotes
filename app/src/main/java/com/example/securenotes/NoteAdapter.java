@@ -56,6 +56,13 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             tv = itemView.findViewById(R.id.tv_note_preview);
         }
     }
+
+    public void updateNotes(List<DashboardActivity.NotePreview> newNotes) {
+        notes.clear();
+        notes.addAll(newNotes);
+        notifyDataSetChanged();
+    }
+
 }
 
 

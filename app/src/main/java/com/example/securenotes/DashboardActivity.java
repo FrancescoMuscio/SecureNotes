@@ -1,11 +1,16 @@
 package com.example.securenotes;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -31,6 +36,7 @@ public class DashboardActivity extends AppCompatActivity {
     private NoteAdapter adapter;
     private boolean wasInBackground = false;
     private List<NotePreview> notes = new ArrayList<>();
+    private List<NotePreview> allNotes = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +45,7 @@ public class DashboardActivity extends AppCompatActivity {
 
         RecyclerView recyclerView = findViewById(R.id.recycler_notes);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
         adapter = new NoteAdapter(notes, new NoteAdapter.OnNoteClickListener() {
             @Override
             public void onNoteClick(String noteId) {
@@ -54,6 +61,33 @@ public class DashboardActivity extends AppCompatActivity {
 
         FloatingActionButton fab = findViewById(R.id.fab_add_note);
         fab.setOnClickListener(v -> openNote(null));
+
+        EditText etSearch = findViewById(R.id.et_search);
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String query = s.toString().toLowerCase();
+                List<NotePreview> filtered = new ArrayList<>();
+
+                if (query.isEmpty()) {
+                    // Rimuove il focus
+                    etSearch.clearFocus();
+                    filtered.addAll(allNotes); // mostra tutte le note
+                } else {
+                    for (NotePreview note : allNotes) {
+                        if (note.title.toLowerCase().contains(query)) {
+                            filtered.add(note);
+                        }
+                    }
+                }
+
+                adapter.updateNotes(filtered);
+            }
+
+        });
 
         timeoutRunnable = () -> {
             Intent intent = new Intent(DashboardActivity.this, LoginActivity.class);
@@ -76,7 +110,31 @@ public class DashboardActivity extends AppCompatActivity {
 
         resetTimeout();
         loadNoteList();
+
+        EditText etSearch = findViewById(R.id.et_search);
+        String query = etSearch.getText().toString().trim().toLowerCase();
+
+        if (!query.isEmpty()) {
+            List<NotePreview> filtered = new ArrayList<>();
+            for (NotePreview note : allNotes) {
+                if (note.title.toLowerCase().contains(query)) {
+                    filtered.add(note);
+                }
+            }
+            adapter.updateNotes(filtered);
+        }
     }
+
+    private void filterNotes(String query) {
+        notes.clear();
+        for (NotePreview note : allNotes) {
+            if (note.title.toLowerCase().contains(query.toLowerCase())) {
+                notes.add(note);
+            }
+        }
+        adapter.notifyDataSetChanged();
+    }
+
 
     @Override
     public void onUserInteraction() {
@@ -103,6 +161,8 @@ public class DashboardActivity extends AppCompatActivity {
 
     private void loadNoteList() {
         notes.clear();
+        allNotes.clear();
+
         File notesDir = new File(getFilesDir(), "notes");
         if (!notesDir.exists()) notesDir.mkdirs();
 
@@ -112,14 +172,18 @@ public class DashboardActivity extends AppCompatActivity {
                 try {
                     String text = EncryptedFileHelper.readEncryptedTextFile(this, f);
                     String title = text.split("\n", 2)[0];
-                    notes.add(new NotePreview(f.getName(), title));
+                    NotePreview preview = new NotePreview(f.getName(), title);
+                    allNotes.add(preview);
+                    notes.add(preview);
                 } catch (Exception e) {
                     // ignora file corrotti o accesso negato
                 }
             }
         }
+
         adapter.notifyDataSetChanged();
     }
+
 
     private void openNote(String noteId) {
         Intent intent = new Intent(this, NoteEditorActivity.class);
@@ -195,7 +259,6 @@ public class DashboardActivity extends AppCompatActivity {
         wasInBackground = true;
     }
 
-    // Preview oggetto nota con titolo + nome file
     public static class NotePreview {
         public final String fileName;
         public final String title;
@@ -206,5 +269,3 @@ public class DashboardActivity extends AppCompatActivity {
         }
     }
 }
-
-
