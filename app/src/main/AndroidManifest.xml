@@ -13,13 +13,26 @@
         android:theme="@style/Theme.SecureNotes">
 
         <!-- Dashboard principale -->
-        <activity android:name=".DashboardActivity" />
-        <activity android:name=".NoteEditorActivity" />
+        <activity android:name=".DashboardActivity"
+            android:configChanges="orientation|screenSize"
+            android:screenOrientation="unspecified"/>
+
+        <activity android:name=".NoteEditorActivity"
+            android:configChanges="orientation|screenSize"
+            android:screenOrientation="unspecified"/>
+
         <activity android:name=".PinActivity" />
         <activity android:name=".ChangePinActivity" />
-        <activity android:name=".SettingsActivity" />
+
+        <activity android:name=".SettingsActivity"
+            android:configChanges="orientation|screenSize"
+            android:screenOrientation="unspecified"/>
+
         <activity android:name=".SetupPinActivity" />
-        <activity android:name=".FileVaultActivity" />
+
+        <activity android:name=".FileVaultActivity"
+            android:configChanges="orientation|screenSize"
+            android:screenOrientation="unspecified"/>
 
 
         <!-- Schermata di login con biometria -->

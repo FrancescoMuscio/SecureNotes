@@ -3,6 +3,7 @@ package com.example.securenotes;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
@@ -268,5 +269,11 @@ public class DashboardActivity extends AppCompatActivity {
             this.title = title;
         }
     }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+    }
+
 }
 
