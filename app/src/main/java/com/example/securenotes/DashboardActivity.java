@@ -9,6 +9,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -63,6 +64,8 @@ public class DashboardActivity extends AppCompatActivity {
         fab.setOnClickListener(v -> openNote(null));
 
         EditText etSearch = findViewById(R.id.et_search);
+
+        // Filtro in tempo reale
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -73,9 +76,7 @@ public class DashboardActivity extends AppCompatActivity {
                 List<NotePreview> filtered = new ArrayList<>();
 
                 if (query.isEmpty()) {
-                    // Rimuove il focus
-                    etSearch.clearFocus();
-                    filtered.addAll(allNotes); // mostra tutte le note
+                    filtered.addAll(allNotes);
                 } else {
                     for (NotePreview note : allNotes) {
                         if (note.title.toLowerCase().contains(query)) {
@@ -86,7 +87,19 @@ public class DashboardActivity extends AppCompatActivity {
 
                 adapter.updateNotes(filtered);
             }
+        });
 
+        // Nascondi tastiera e rimuovi focus solo alla pressione di "Fine"
+        etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_NULL) {
+                etSearch.clearFocus();
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(etSearch.getWindowToken(), 0);
+                }
+                return true;
+            }
+            return false;
         });
 
         timeoutRunnable = () -> {
@@ -124,17 +137,6 @@ public class DashboardActivity extends AppCompatActivity {
             adapter.updateNotes(filtered);
         }
     }
-
-    private void filterNotes(String query) {
-        notes.clear();
-        for (NotePreview note : allNotes) {
-            if (note.title.toLowerCase().contains(query.toLowerCase())) {
-                notes.add(note);
-            }
-        }
-        adapter.notifyDataSetChanged();
-    }
-
 
     @Override
     public void onUserInteraction() {
@@ -184,7 +186,6 @@ public class DashboardActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
 
-
     private void openNote(String noteId) {
         Intent intent = new Intent(this, NoteEditorActivity.class);
         if (noteId != null) {
@@ -231,7 +232,6 @@ public class DashboardActivity extends AppCompatActivity {
         );
     }
 
-    // Menu impostazioni e allegati
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.dashboard_menu, menu);
@@ -269,3 +269,4 @@ public class DashboardActivity extends AppCompatActivity {
         }
     }
 }
+
