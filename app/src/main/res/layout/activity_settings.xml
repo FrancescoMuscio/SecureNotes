@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -24,7 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="number"
-            android:hint="Deafult: 3"
+            android:hint="Default: 3"
             android:textColor="?android:textColorPrimary"
             app:hintTextColor="?android:textColorSecondary"
             android:background="?android:colorBackground"/>
@@ -36,7 +37,6 @@
             android:text="Salva timeout"
             android:layout_marginTop="16dp" />
 
-        <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
@@ -80,13 +80,13 @@
             android:text="Cambia PIN"
             android:layout_marginTop="16dp" />
 
-        <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginVertical="24dp"
             android:background="?android:textColorSecondary" />
 
+        <!-- Backup manuale -->
         <Button
             android:id="@+id/btn_backup"
             android:layout_width="match_parent"
@@ -99,18 +99,66 @@
             android:layout_height="wrap_content"
             android:text="Ripristina backup" />
 
-        <!-- Divider -->
+        <!-- Backup automatico -->
+        <TextView
+            android:id="@+id/tv_auto_backup_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Backup automatico"
+            android:layout_marginTop="16dp"
+            android:textColor="?android:textColorPrimary"
+            android:textSize="18sp" />
+
+        <Switch
+            android:id="@+id/switch_auto_backup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Abilita backup automatico" />
+
+        <EditText
+            android:id="@+id/et_backup_interval"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Intervallo backup (minuti, minimo 15)"
+            android:inputType="number"
+            android:layout_marginTop="8dp"
+            android:textColor="?android:textColorPrimary"
+            app:hintTextColor="?android:textColorSecondary" />
+
+        <Button
+            android:id="@+id/btn_pick_folder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Scegli cartella backup"
+            android:layout_marginTop="8dp"/>
+
+        <Button
+            android:id="@+id/btn_set_backup_schedule"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Imposta backup automatico"
+            android:layout_marginTop="8dp"/>
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginVertical="24dp"
             android:background="?android:textColorSecondary" />
 
+        <!-- Tema -->
         <Button
             android:id="@+id/btn_choose_theme"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Scegli tema" />
+
+        <Button
+            android:id="@+id/btn_force_backup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Esegui backup ora (test)"
+            android:layout_marginTop="8dp" />
+
 
     </LinearLayout>
 </ScrollView>

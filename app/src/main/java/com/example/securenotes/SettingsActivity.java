@@ -5,9 +5,7 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.*;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -15,15 +13,18 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
+import androidx.work.*;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.concurrent.TimeUnit;
 
 public class SettingsActivity extends AppCompatActivity {
 
     private EditText etTimeout, etOldPin, etNewPin;
-    private String backupPasswordTemp;
-    private String restorePasswordTemp;
+    private Switch switchAutoBackup;
+    private SharedPreferences prefs;
+    private String backupPasswordTemp, restorePasswordTemp;
 
     private final ActivityResultLauncher<Intent> exportLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -32,10 +33,8 @@ public class SettingsActivity extends AppCompatActivity {
                     String password = backupPasswordTemp;
 
                     if (destinationUri != null && password != null) {
-                        getContentResolver().takePersistableUriPermission(
-                                destinationUri,
-                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        );
+                        getContentResolver().takePersistableUriPermission(destinationUri,
+                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                         new Thread(() -> {
                             try {
@@ -57,10 +56,8 @@ public class SettingsActivity extends AppCompatActivity {
                     String password = restorePasswordTemp;
 
                     if (uri != null && password != null) {
-                        getContentResolver().takePersistableUriPermission(
-                                uri,
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        );
+                        getContentResolver().takePersistableUriPermission(uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                         new Thread(() -> {
                             try {
@@ -75,43 +72,57 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
+    private final ActivityResultLauncher<Intent> folderPickerLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Uri treeUri = result.getData().getData();
+                    if (treeUri != null) {
+                        getContentResolver().takePersistableUriPermission(treeUri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                        prefs.edit().putString("auto_backup_folder_uri", treeUri.toString()).apply();
+                        toast("Cartella backup impostata");
+                    }
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
+        findViewById(R.id.btn_force_backup).setOnClickListener(v -> forceBackupNow());
+
+
+        prefs = getSharedPreferences("settings", MODE_PRIVATE);
+
         etTimeout = findViewById(R.id.et_timeout);
         etOldPin = findViewById(R.id.et_old_pin);
         etNewPin = findViewById(R.id.et_new_pin);
+        switchAutoBackup = findViewById(R.id.switch_auto_backup);
 
-        Button btnSaveTimeout = findViewById(R.id.btn_save_timeout);
-        Button btnChangePin = findViewById(R.id.btn_change_pin);
-        Button btnBackup = findViewById(R.id.btn_backup);
-        Button btnRestore = findViewById(R.id.btn_restore);
-        Button btnChooseTheme = findViewById(R.id.btn_choose_theme);
+        EditText etBackupInterval = findViewById(R.id.et_backup_interval);
+        Button btnSetSchedule = findViewById(R.id.btn_set_backup_schedule);
+        Button btnPickFolder = findViewById(R.id.btn_pick_folder);
 
-        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
-        int currentTimeout = prefs.getInt("timeout_minutes", 3);
-        etTimeout.setText(String.valueOf(currentTimeout));
+        etTimeout.setText(String.valueOf(prefs.getInt("timeout_minutes", 3)));
+        switchAutoBackup.setChecked(prefs.getBoolean("auto_backup_enabled", false));
 
-        btnSaveTimeout.setOnClickListener(v -> {
+        findViewById(R.id.btn_save_timeout).setOnClickListener(v -> {
             String value = etTimeout.getText().toString().trim();
             if (value.isEmpty()) {
                 toast("Inserisci un numero");
                 return;
             }
-
             int timeout = Integer.parseInt(value);
             if (timeout < 1) {
                 toast("Il timeout deve essere almeno 1 minuto");
                 return;
             }
-
             prefs.edit().putInt("timeout_minutes", timeout).apply();
             toast("Timeout aggiornato");
         });
 
-        btnChangePin.setOnClickListener(v -> {
+        findViewById(R.id.btn_change_pin).setOnClickListener(v -> {
             try {
                 SharedPreferences securePrefs = getEncryptedPrefs();
                 String savedPin = securePrefs.getString("user_pin", null);
@@ -122,7 +133,6 @@ public class SettingsActivity extends AppCompatActivity {
                     toast("PIN attuale errato");
                     return;
                 }
-
                 if (newPin.length() < 4) {
                     toast("Nuovo PIN troppo corto");
                     return;
@@ -137,7 +147,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
-        btnBackup.setOnClickListener(v -> {
+        findViewById(R.id.btn_backup).setOnClickListener(v -> {
             EditText input = new EditText(this);
             input.setHint("Password per il backup");
 
@@ -151,7 +161,6 @@ public class SettingsActivity extends AppCompatActivity {
                             toast("Password troppo corta");
                             return;
                         }
-
                         backupPasswordTemp = password;
 
                         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -164,7 +173,7 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
-        btnRestore.setOnClickListener(v -> {
+        findViewById(R.id.btn_restore).setOnClickListener(v -> {
             EditText input = new EditText(this);
             input.setHint("Password del backup");
 
@@ -178,7 +187,6 @@ public class SettingsActivity extends AppCompatActivity {
                             toast("Password troppo corta");
                             return;
                         }
-
                         restorePasswordTemp = password;
 
                         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -191,12 +199,58 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
-        btnChooseTheme.setOnClickListener(v -> {
+        btnPickFolder.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            folderPickerLauncher.launch(intent);
+        });
+
+        btnSetSchedule.setOnClickListener(v -> {
+            String intervalStr = etBackupInterval.getText().toString().trim();
+            if (intervalStr.isEmpty()) {
+                toast("Inserisci un intervallo");
+                return;
+            }
+            int interval = Integer.parseInt(intervalStr);
+            if (interval < 15) {
+                toast("Intervallo minimo: 15 minuti");
+                return;
+            }
+
+            String folderUriStr = prefs.getString("auto_backup_folder_uri", null);
+            if (folderUriStr == null) {
+                toast("Scegli prima una cartella di destinazione");
+                return;
+            }
+
+            EditText input = new EditText(this);
+            input.setHint("Password per backup automatico");
+
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Proteggi backup automatici")
+                    .setMessage("Inserisci la password per i backup automatici:")
+                    .setView(input)
+                    .setPositiveButton("Conferma", (dialog, which) -> {
+                        String password = input.getText().toString().trim();
+                        if (password.length() < 4) {
+                            toast("Password troppo corta");
+                            return;
+                        }
+
+                        prefs.edit()
+                                .putString("auto_backup_password", password)
+                                .putBoolean("auto_backup_enabled", true)
+                                .apply();
+
+                        scheduleBackup(Uri.parse(folderUriStr), password, interval);
+                    })
+                    .setNegativeButton("Annulla", null)
+                    .show();
+        });
+
+        findViewById(R.id.btn_choose_theme).setOnClickListener(v -> {
             String[] options = {"Chiaro", "Scuro", "Segui sistema"};
             String[] values = {"light", "dark", "system"};
-
-            String current = getSharedPreferences("settings", MODE_PRIVATE)
-                    .getString("theme_mode", "light");
+            String current = prefs.getString("theme_mode", "light");
 
             int checkedItem = 0;
             for (int i = 0; i < values.length; i++) {
@@ -216,6 +270,27 @@ public class SettingsActivity extends AppCompatActivity {
                     .setNegativeButton("Annulla", null)
                     .show();
         });
+    }
+
+    private void scheduleBackup(Uri folderUri, String password, int intervalMinutes) {
+        Data inputData = new Data.Builder()
+                .putString(BackupWorker.KEY_FOLDER, folderUri.toString())
+                .putString(BackupWorker.KEY_PASSWORD, password)
+                .build();
+
+        PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
+                BackupWorker.class,
+                intervalMinutes, TimeUnit.MINUTES)
+                .setInputData(inputData)
+                .build();
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "auto_backup_work",
+                ExistingPeriodicWorkPolicy.REPLACE,
+                request
+        );
+
+        toast("Backup automatico pianificato ogni " + intervalMinutes + " minuti");
     }
 
     private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
@@ -251,6 +326,28 @@ public class SettingsActivity extends AppCompatActivity {
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
     }
+
+    private void forceBackupNow() {
+        String folderUriStr = prefs.getString("auto_backup_folder_uri", null);
+        String password = prefs.getString("auto_backup_password", null);
+
+        if (folderUriStr == null || password == null) {
+            toast("Cartella o password non impostata");
+            return;
+        }
+
+        Data inputData = new Data.Builder()
+                .putString(BackupWorker.KEY_FOLDER, folderUriStr)
+                .putString(BackupWorker.KEY_PASSWORD, password)
+                .build();
+
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                .setInputData(inputData)
+                .build();
+
+        WorkManager.getInstance(this).enqueue(request);
+
+        toast("Backup forzato in esecuzione");
+    }
+
 }
-
-
