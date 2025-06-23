@@ -247,6 +247,21 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
+        switchAutoBackup.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("auto_backup_enabled", isChecked).apply();
+
+            etBackupInterval.setEnabled(isChecked);
+            btnSetSchedule.setEnabled(isChecked);
+            btnPickFolder.setEnabled(isChecked);
+
+            if (!isChecked) {
+                WorkManager.getInstance(this).cancelUniqueWork("auto_backup_work");
+                toast("Backup automatico disattivato");
+            }
+        });
+
+
+
         findViewById(R.id.btn_choose_theme).setOnClickListener(v -> {
             String[] options = {"Chiaro", "Scuro", "Segui sistema"};
             String[] values = {"light", "dark", "system"};
