@@ -115,16 +115,6 @@
             android:layout_height="wrap_content"
             android:text="Abilita backup automatico" />
 
-        <EditText
-            android:id="@+id/et_backup_interval"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Intervallo backup (minuti, minimo 15)"
-            android:inputType="number"
-            android:layout_marginTop="8dp"
-            android:textColor="?android:textColorPrimary"
-            app:hintTextColor="?android:textColorSecondary" />
-
         <Button
             android:id="@+id/btn_pick_folder"
             android:layout_width="match_parent"
@@ -151,14 +141,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Scegli tema" />
-
-        <Button
-            android:id="@+id/btn_force_backup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Esegui backup ora (test)"
-            android:layout_marginTop="8dp" />
-
 
     </LinearLayout>
 </ScrollView>

@@ -90,9 +90,6 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        findViewById(R.id.btn_force_backup).setOnClickListener(v -> forceBackupNow());
-
-
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
 
         etTimeout = findViewById(R.id.et_timeout);
@@ -100,7 +97,6 @@ public class SettingsActivity extends AppCompatActivity {
         etNewPin = findViewById(R.id.et_new_pin);
         switchAutoBackup = findViewById(R.id.switch_auto_backup);
 
-        EditText etBackupInterval = findViewById(R.id.et_backup_interval);
         Button btnSetSchedule = findViewById(R.id.btn_set_backup_schedule);
         Button btnPickFolder = findViewById(R.id.btn_pick_folder);
 
@@ -204,57 +200,60 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         btnSetSchedule.setOnClickListener(v -> {
-            String intervalStr = etBackupInterval.getText().toString().trim();
-            if (intervalStr.isEmpty()) {
-                toast("Inserisci un intervallo");
-                return;
-            }
-            int interval = Integer.parseInt(intervalStr);
-            if (interval < 15) {
-                toast("Intervallo minimo: 15 minuti");
-                return;
-            }
-
             String folderUriStr = prefs.getString("auto_backup_folder_uri", null);
             if (folderUriStr == null) {
                 toast("Scegli prima una cartella di destinazione");
                 return;
             }
 
-            EditText input = new EditText(this);
-            input.setHint("Password per backup automatico");
+            final String[] labels = {"Ogni 15 minuti", "Ogni giorno", "Ogni 3 giorni", "Ogni 7 giorni"};
+            final int[] intervals = {15, 1440, 4320, 10080}; // in minuti
 
             new androidx.appcompat.app.AlertDialog.Builder(this)
-                    .setTitle("Proteggi backup automatici")
-                    .setMessage("Inserisci la password per i backup automatici:")
-                    .setView(input)
-                    .setPositiveButton("Conferma", (dialog, which) -> {
-                        String password = input.getText().toString().trim();
-                        if (password.length() < 4) {
-                            toast("Password troppo corta");
-                            return;
-                        }
+                    .setTitle("Scegli intervallo backup")
+                    .setSingleChoiceItems(labels, 1, (dialog, which) -> {
+                        dialog.dismiss();
 
-                        prefs.edit()
-                                .putString("auto_backup_password", password)
-                                .putBoolean("auto_backup_enabled", true)
-                                .apply();
+                        int selectedInterval = intervals[which];
 
-                        scheduleBackup(Uri.parse(folderUriStr), password, interval);
+                        // Ora chiediamo la password
+                        EditText input = new EditText(this);
+                        input.setHint("Password per backup automatico");
+
+                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                                .setTitle("Proteggi backup automatici")
+                                .setMessage("Inserisci la password per i backup automatici:")
+                                .setView(input)
+                                .setPositiveButton("Conferma", (d2, w2) -> {
+                                    String password = input.getText().toString().trim();
+                                    if (password.length() < 4) {
+                                        toast("Password troppo corta");
+                                        return;
+                                    }
+
+                                    prefs.edit()
+                                            .putString("auto_backup_password", password)
+                                            .putBoolean("auto_backup_enabled", true)
+                                            .apply();
+
+                                    scheduleBackup(Uri.parse(folderUriStr), password, selectedInterval);
+                                })
+                                .setNegativeButton("Annulla", null)
+                                .show();
+
                     })
                     .setNegativeButton("Annulla", null)
                     .show();
         });
+
         switchAutoBackup.setChecked(prefs.getBoolean("auto_backup_enabled", false));
         boolean isEnabled = switchAutoBackup.isChecked();
-        etBackupInterval.setEnabled(isEnabled);
         btnSetSchedule.setEnabled(isEnabled);
         btnPickFolder.setEnabled(isEnabled);
 
         switchAutoBackup.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("auto_backup_enabled", isChecked).apply();
 
-            etBackupInterval.setEnabled(isChecked);
             btnSetSchedule.setEnabled(isChecked);
             btnPickFolder.setEnabled(isChecked);
 
@@ -352,28 +351,4 @@ public class SettingsActivity extends AppCompatActivity {
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
     }
-
-    private void forceBackupNow() {
-        String folderUriStr = prefs.getString("auto_backup_folder_uri", null);
-        String password = prefs.getString("auto_backup_password", null);
-
-        if (folderUriStr == null || password == null) {
-            toast("Cartella o password non impostata");
-            return;
-        }
-
-        Data inputData = new Data.Builder()
-                .putString(BackupWorker.KEY_FOLDER, folderUriStr)
-                .putString(BackupWorker.KEY_PASSWORD, password)
-                .build();
-
-        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
-                .setInputData(inputData)
-                .build();
-
-        WorkManager.getInstance(this).enqueue(request);
-
-        toast("Backup forzato in esecuzione");
-    }
-
 }
