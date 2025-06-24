@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/> <!-- Per versioni android < 10 -->
+    <!-- Solo per Android < 10 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- Per far ripartire i backup automatici dopo un reboot o aggiornamento -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".SecureNotesApplication"
@@ -15,25 +20,24 @@
         <!-- Dashboard principale -->
         <activity android:name=".DashboardActivity"
             android:configChanges="orientation|screenSize"
-            android:screenOrientation="unspecified"/>
+            android:screenOrientation="unspecified" />
 
         <activity android:name=".NoteEditorActivity"
             android:configChanges="orientation|screenSize"
-            android:screenOrientation="unspecified"/>
+            android:screenOrientation="unspecified" />
 
         <activity android:name=".PinActivity" />
         <activity android:name=".ChangePinActivity" />
 
         <activity android:name=".SettingsActivity"
             android:configChanges="orientation|screenSize"
-            android:screenOrientation="unspecified"/>
+            android:screenOrientation="unspecified" />
 
         <activity android:name=".SetupPinActivity" />
 
         <activity android:name=".FileVaultActivity"
             android:configChanges="orientation|screenSize"
-            android:screenOrientation="unspecified"/>
-
+            android:screenOrientation="unspecified" />
 
         <!-- Schermata di login con biometria -->
         <activity android:name=".LoginActivity"
@@ -44,6 +48,7 @@
             </intent-filter>
         </activity>
 
+        <!-- FileProvider per allegati o backup -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.example.securenotes.fileprovider"
@@ -53,6 +58,18 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Receiver per riavviare i backup automatici dopo reboot o aggiornamento -->
+        <receiver
+            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+            android:enabled="true"
+            android:exported="false"
+            tools:replace="android:enabled">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

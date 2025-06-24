@@ -105,7 +105,6 @@ public class SettingsActivity extends AppCompatActivity {
         Button btnPickFolder = findViewById(R.id.btn_pick_folder);
 
         etTimeout.setText(String.valueOf(prefs.getInt("timeout_minutes", 3)));
-        switchAutoBackup.setChecked(prefs.getBoolean("auto_backup_enabled", false));
 
         findViewById(R.id.btn_save_timeout).setOnClickListener(v -> {
             String value = etTimeout.getText().toString().trim();
@@ -246,6 +245,11 @@ public class SettingsActivity extends AppCompatActivity {
                     .setNegativeButton("Annulla", null)
                     .show();
         });
+        switchAutoBackup.setChecked(prefs.getBoolean("auto_backup_enabled", false));
+        boolean isEnabled = switchAutoBackup.isChecked();
+        etBackupInterval.setEnabled(isEnabled);
+        btnSetSchedule.setEnabled(isEnabled);
+        btnPickFolder.setEnabled(isEnabled);
 
         switchAutoBackup.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("auto_backup_enabled", isChecked).apply();
@@ -293,10 +297,16 @@ public class SettingsActivity extends AppCompatActivity {
                 .putString(BackupWorker.KEY_PASSWORD, password)
                 .build();
 
+        Constraints constraints = new Constraints.Builder()
+                .setRequiresBatteryNotLow(true) // non esegue con batteria bassa
+                .setRequiresCharging(false) // opzionale: esegue anche se non in carica
+                .build();
+
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
                 BackupWorker.class,
                 intervalMinutes, TimeUnit.MINUTES)
                 .setInputData(inputData)
+                .setConstraints(constraints)
                 .build();
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
@@ -307,6 +317,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         toast("Backup automatico pianificato ogni " + intervalMinutes + " minuti");
     }
+
 
     private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
         MasterKey masterKey = new MasterKey.Builder(this)
