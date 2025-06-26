@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
+import com.scottyab.rootbeer.RootBeer;
 
 public class DashboardActivity extends AppCompatActivity {
 
@@ -43,6 +44,19 @@ public class DashboardActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Controllo root
+        RootBeer rootBeer = new RootBeer(this);
+        if (rootBeer.isRooted()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Dispositivo non sicuro")
+                    .setMessage("Il dispositivo è rootato. L'applicazione non può essere eseguita per motivi di sicurezza.")
+                    .setCancelable(false)
+                    .setPositiveButton("Esci", (dialog, which) -> finishAffinity())
+                    .show();
+            return;
+        }
+
         setContentView(R.layout.activity_dashboard);
 
         RecyclerView recyclerView = findViewById(R.id.recycler_notes);
@@ -246,7 +260,7 @@ public class DashboardActivity extends AppCompatActivity {
         if (id == R.id.action_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
-        } else if (id == R.id.action_file_vault) {
+        } else if (id == R.id.action_attachments) {
             startActivity(new Intent(this, FileVaultActivity.class));
             return true;
         }

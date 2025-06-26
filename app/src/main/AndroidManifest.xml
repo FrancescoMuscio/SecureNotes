@@ -2,10 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Solo per Android < 10 -->
+    <!-- Perb versioni Android < 10 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-    <!-- Per far ripartire i backup automatici dopo un reboot o aggiornamento -->
+    <!-- Per far ripartire i backup automatici dopo un reboot  -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
@@ -17,6 +17,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SecureNotes">
 
+        <!-- Disattivazione startup automatica di WorkManager, per evitare conflitto -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="remove" />
+
         <!-- Dashboard principale -->
         <activity android:name=".DashboardActivity"
             android:configChanges="orientation|screenSize"
@@ -27,7 +33,6 @@
             android:screenOrientation="unspecified" />
 
         <activity android:name=".PinActivity" />
-        <activity android:name=".ChangePinActivity" />
 
         <activity android:name=".SettingsActivity"
             android:configChanges="orientation|screenSize"
@@ -59,7 +64,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Receiver per riavviare i backup automatici dopo reboot o aggiornamento -->
+        <!-- Receiver per riavviare i backup automatici dopo riavvio del dispositivo  -->
         <receiver
             android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
             android:enabled="true"

@@ -1,5 +1,6 @@
 package com.example.securenotes;
 
+import android.app.Notification;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -9,6 +10,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.work.Data;
+import androidx.work.ForegroundInfo;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -17,6 +19,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 
 public class BackupWorker extends Worker {
 
@@ -30,6 +33,7 @@ public class BackupWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
+
         Context ctx = getApplicationContext();
 
         // Ottiene input da WorkManager
@@ -80,6 +84,8 @@ public class BackupWorker extends Worker {
             return Result.failure();
         }
     }
+
 }
+
 
 

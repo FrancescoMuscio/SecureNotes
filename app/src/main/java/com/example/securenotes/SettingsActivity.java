@@ -10,6 +10,7 @@ import android.widget.*;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
@@ -36,15 +37,31 @@ public class SettingsActivity extends AppCompatActivity {
                         getContentResolver().takePersistableUriPermission(destinationUri,
                                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
+                        AlertDialog progressDialog = new AlertDialog.Builder(this)
+                                .setTitle("Backup in corso")
+                                .setMessage("Attendere il completamento del backup...")
+                                .setCancelable(false)
+                                .setView(new ProgressBar(this))
+                                .create();
+
+                        progressDialog.show();
+
                         new Thread(() -> {
                             try {
                                 AESBackupHelper.createEncryptedBackup(this, destinationUri, password);
-                                runOnUiThread(() -> toast("Backup completato con successo"));
+                                runOnUiThread(() -> {
+                                    progressDialog.dismiss();
+                                    toast("Backup completato con successo");
+                                });
                             } catch (Exception e) {
                                 e.printStackTrace();
-                                runOnUiThread(() -> toast("Errore durante il backup"));
+                                runOnUiThread(() -> {
+                                    progressDialog.dismiss();
+                                    toast("Errore durante il backup");
+                                });
                             }
                         }).start();
+
                     }
                 }
             });
@@ -59,13 +76,28 @@ public class SettingsActivity extends AppCompatActivity {
                         getContentResolver().takePersistableUriPermission(uri,
                                 Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
+                        AlertDialog progressDialog = new AlertDialog.Builder(this)
+                                .setTitle("Ripristino backup in corso")
+                                .setMessage("Attendere il completamento del ripristino...")
+                                .setCancelable(false)
+                                .setView(new ProgressBar(this))
+                                .create();
+
+                        progressDialog.show();
+
                         new Thread(() -> {
                             try {
                                 AESBackupHelper.restoreEncryptedBackup(this, uri, password);
-                                runOnUiThread(() -> toast("Backup ripristinato con successo"));
+                                runOnUiThread(() -> {
+                                    progressDialog.dismiss();
+                                    toast("Backup ripristinato con successo");
+                                });
                             } catch (Exception e) {
                                 e.printStackTrace();
-                                runOnUiThread(() -> toast("Errore durante il ripristino"));
+                                runOnUiThread(() -> {
+                                    progressDialog.dismiss();
+                                    toast("Errore durante il ripristino");
+                                });
                             }
                         }).start();
                     }
@@ -200,34 +232,35 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         btnSetSchedule.setOnClickListener(v -> {
-            String folderUriStr = prefs.getString("auto_backup_folder_uri", null);
-            if (folderUriStr == null) {
-                toast("Scegli prima una cartella di destinazione");
-                return;
-            }
+            String[] labels = {"15 minuti", "1 giorno", "3 giorni", "7 giorni"};
+            int[] intervals = {15, 1440, 4320, 10080}; // in minuti
 
-            final String[] labels = {"Ogni 15 minuti", "Ogni giorno", "Ogni 3 giorni", "Ogni 7 giorni"};
-            final int[] intervals = {15, 1440, 4320, 10080}; // in minuti
+            final int[] selectedIndex = {0}; // default = 15 minuti
 
             new androidx.appcompat.app.AlertDialog.Builder(this)
-                    .setTitle("Scegli intervallo backup")
-                    .setSingleChoiceItems(labels, 1, (dialog, which) -> {
-                        dialog.dismiss();
+                    .setTitle("Ogni quanto eseguire il backup?")
+                    .setSingleChoiceItems(labels, 0, (dialog, which) -> selectedIndex[0] = which)
+                    .setPositiveButton("Avanti", (dialog, which) -> {
+                        int chosenInterval = intervals[selectedIndex[0]];
 
-                        int selectedInterval = intervals[which];
-
-                        // Ora chiediamo la password
+                        // Ora apriamo la finestra per la password
                         EditText input = new EditText(this);
                         input.setHint("Password per backup automatico");
 
                         new androidx.appcompat.app.AlertDialog.Builder(this)
                                 .setTitle("Proteggi backup automatici")
-                                .setMessage("Inserisci la password per i backup automatici:")
+                                .setMessage("Inserisci la password per criptare i backup:")
                                 .setView(input)
-                                .setPositiveButton("Conferma", (d2, w2) -> {
+                                .setPositiveButton("Conferma", (d, w) -> {
                                     String password = input.getText().toString().trim();
                                     if (password.length() < 4) {
                                         toast("Password troppo corta");
+                                        return;
+                                    }
+
+                                    String folderUriStr = prefs.getString("auto_backup_folder_uri", null);
+                                    if (folderUriStr == null) {
+                                        toast("Scegli prima una cartella");
                                         return;
                                     }
 
@@ -236,7 +269,7 @@ public class SettingsActivity extends AppCompatActivity {
                                             .putBoolean("auto_backup_enabled", true)
                                             .apply();
 
-                                    scheduleBackup(Uri.parse(folderUriStr), password, selectedInterval);
+                                    scheduleBackup(Uri.parse(folderUriStr), password, chosenInterval);
                                 })
                                 .setNegativeButton("Annulla", null)
                                 .show();
@@ -263,26 +296,27 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
-
-
         findViewById(R.id.btn_choose_theme).setOnClickListener(v -> {
             String[] options = {"Chiaro", "Scuro", "Segui sistema"};
             String[] values = {"light", "dark", "system"};
             String current = prefs.getString("theme_mode", "light");
 
-            int checkedItem = 0;
+            final int[] selected = {0};
             for (int i = 0; i < values.length; i++) {
                 if (values[i].equals(current)) {
-                    checkedItem = i;
+                    selected[0] = i;
                     break;
                 }
             }
 
-            new androidx.appcompat.app.AlertDialog.Builder(this)
+            new AlertDialog.Builder(this)
                     .setTitle("Scegli tema")
-                    .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
-                        ThemeUtils.setTheme(this, values[which]);
-                        dialog.dismiss();
+                    .setSingleChoiceItems(options, selected[0], (dialog, which) -> {
+                        selected[0] = which;
+                    })
+                    .setPositiveButton("Conferma", (dialog, which) -> {
+                        prefs.edit().putString("theme_mode", values[selected[0]]).apply();
+                        ThemeUtils.setTheme(this, values[selected[0]]);
                         recreate();
                     })
                     .setNegativeButton("Annulla", null)
@@ -304,6 +338,7 @@ public class SettingsActivity extends AppCompatActivity {
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
                 BackupWorker.class,
                 intervalMinutes, TimeUnit.MINUTES)
+                .setInitialDelay(15, TimeUnit.MINUTES) //Non lo crea subito, ma aspetta il tempo selezionato. Fa un baackup iniziale di sicurezza
                 .setInputData(inputData)
                 .setConstraints(constraints)
                 .build();
