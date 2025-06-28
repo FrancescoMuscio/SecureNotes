@@ -1,14 +1,12 @@
 package com.example.securenotes;
 
-import android.app.Activity;
 import android.content.Intent;
-
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
-
 import java.util.concurrent.Executor;
+
 
 public class AuthHelper {
 
@@ -29,14 +27,13 @@ public class AuthHelper {
 
             @Override
             public void onAuthenticationError(int errorCode, CharSequence errString) {
-                // Qualsiasi errore (incluso Annulla) porta a fallimento
+                // Qualsiasi errore (incluso "Annulla") porta a fallimento
                 callback.onFailure();
             }
 
-
             @Override
             public void onAuthenticationFailed() {
-                // puoi loggare o ignorare
+                // Ignora
             }
         });
 

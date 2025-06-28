@@ -2,8 +2,8 @@ package com.example.securenotes;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
 import androidx.appcompat.app.AppCompatDelegate;
+
 
 public class ThemeUtils {
 

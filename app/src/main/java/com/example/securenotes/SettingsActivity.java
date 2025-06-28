@@ -6,7 +6,6 @@ import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.*;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -15,10 +14,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
 import androidx.work.*;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.TimeUnit;
+
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -338,7 +337,7 @@ public class SettingsActivity extends AppCompatActivity {
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
                 BackupWorker.class,
                 intervalMinutes, TimeUnit.MINUTES)
-                .setInitialDelay(15, TimeUnit.MINUTES) //Non lo crea subito, ma aspetta il tempo selezionato. Fa un baackup iniziale di sicurezza
+                .setInitialDelay(intervalMinutes, TimeUnit.MINUTES) // Non lo crea subito, ma aspetta il tempo selezionato
                 .setInputData(inputData)
                 .setConstraints(constraints)
                 .build();

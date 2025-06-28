@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
 
+
 public class AppLifecycleTracker implements Application.ActivityLifecycleCallbacks {
 
     private static int started = 0;
@@ -42,7 +43,7 @@ public class AppLifecycleTracker implements Application.ActivityLifecycleCallbac
         }
     }
 
-    // altri metodi non usati
+    // Altri metodi non usati
     public void onActivityCreated(Activity a, Bundle b) {}
     public void onActivityDestroyed(Activity a) {}
     public void onActivityPaused(Activity a) {}

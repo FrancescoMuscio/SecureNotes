@@ -1,17 +1,14 @@
 package com.example.securenotes;
 
-import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
-
 import org.jspecify.annotations.NonNull;
-
 import java.io.File;
+
 
 public class NoteEditorActivity extends AppCompatActivity {
 

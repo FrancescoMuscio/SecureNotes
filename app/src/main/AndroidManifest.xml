@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Perb versioni Android < 10 -->
+    <!-- Per versioni Android < 10 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <!-- Per far ripartire i backup automatici dopo un reboot  -->
@@ -17,7 +17,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SecureNotes">
 
-        <!-- Disattivazione startup automatica di WorkManager, per evitare conflitto -->
+        <!-- Disattivazione startup automatica di WorkManager, per evitare conflitti -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

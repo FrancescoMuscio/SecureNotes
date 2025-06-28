@@ -1,14 +1,10 @@
 package com.example.securenotes;
 
 import android.app.Application;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.os.Build;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Configuration;
+
 
 public class SecureNotesApplication extends Application implements Configuration.Provider {
 

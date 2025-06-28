@@ -2,22 +2,21 @@ package com.example.securenotes;
 
 import android.content.Context;
 import android.net.Uri;
-
 import java.io.*;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+
 public class AESBackupHelper {
 
-    // ==== Backup manuale ====
+    // Backup manuale
 
     public static void createEncryptedBackup(Context context, Uri destination, String password) throws Exception {
         File tempZip = new File(context.getCacheDir(), "temp_backup.zip");
@@ -65,7 +64,7 @@ public class AESBackupHelper {
         tempZip.delete();
     }
 
-    // ==== Backup automatico ====
+    //Backup automatico
 
     public static void createZipOfData(Context context, File outputZip) throws Exception {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outputZip))) {
@@ -80,7 +79,7 @@ public class AESBackupHelper {
         }
     }
 
-    // ==== Utilità ZIP ====
+    // Utilità ZIP
 
     private static void zipDirectory(Context ctx, File dir, String zipPathPrefix, ZipOutputStream zos, boolean isNote) throws IOException, GeneralSecurityException {
         if (!dir.exists()) return;
@@ -114,7 +113,7 @@ public class AESBackupHelper {
         return sb.toString().trim();
     }
 
-    // ==== Criptazione ====
+    // Criptazione
 
     private static void encryptStream(InputStream in, OutputStream out, String password) throws Exception {
         byte[] salt = new byte[16];

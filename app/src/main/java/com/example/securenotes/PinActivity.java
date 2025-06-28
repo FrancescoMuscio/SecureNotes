@@ -5,13 +5,12 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+
 
 public class PinActivity extends AppCompatActivity {
 

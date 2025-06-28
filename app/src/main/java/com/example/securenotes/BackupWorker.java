@@ -1,25 +1,18 @@
 package com.example.securenotes;
 
-import android.app.Notification;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
-import androidx.work.Data;
-import androidx.work.ForegroundInfo;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
-
 import java.io.File;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.ExecutionException;
+
 
 public class BackupWorker extends Worker {
 
@@ -33,7 +26,6 @@ public class BackupWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-
         Context ctx = getApplicationContext();
 
         // Ottiene input da WorkManager
@@ -63,7 +55,6 @@ public class BackupWorker extends Worker {
                     filename
             );
 
-
             if (outputUri == null) throw new Exception("Impossibile creare il file di destinazione");
 
             OutputStream out = ctx.getContentResolver().openOutputStream(outputUri);
@@ -84,7 +75,6 @@ public class BackupWorker extends Worker {
             return Result.failure();
         }
     }
-
 }
 
 
