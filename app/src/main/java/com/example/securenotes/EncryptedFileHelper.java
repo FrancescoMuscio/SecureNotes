@@ -13,12 +13,7 @@ public class EncryptedFileHelper {
     public static void saveEncryptedTextFile(Context context, File file, String text) throws IOException, GeneralSecurityException {
         if (file.exists()) file.delete();
 
-        EncryptedFile encryptedFile = new EncryptedFile.Builder(
-                context,
-                file,
-                getMasterKey(context),
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-        ).build();
+        EncryptedFile encryptedFile = new EncryptedFile.Builder(context, file, getMasterKey(context), EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB).build();
 
         try (FileOutputStream fos = encryptedFile.openFileOutput()) {
             fos.write(text.getBytes(StandardCharsets.UTF_8));
@@ -26,14 +21,9 @@ public class EncryptedFileHelper {
     }
 
     public static String readEncryptedTextFile(Context context, File file) throws IOException, GeneralSecurityException {
-        EncryptedFile encryptedFile = new EncryptedFile.Builder(
-                context,
-                file,
-                getMasterKey(context),
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-        ).build();
-
+        EncryptedFile encryptedFile = new EncryptedFile.Builder(context, file, getMasterKey(context), EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB).build();
         StringBuilder sb = new StringBuilder();
+
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(encryptedFile.openFileInput()))) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -46,15 +36,10 @@ public class EncryptedFileHelper {
     public static void saveEncryptedBinaryFile(Context context, File file, InputStream in) throws IOException, GeneralSecurityException {
         if (file.exists()) file.delete();
 
-        EncryptedFile encryptedFile = new EncryptedFile.Builder(
-                context,
-                file,
-                getMasterKey(context),
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-        ).build();
+        EncryptedFile encryptedFile = new EncryptedFile.Builder(context, file, getMasterKey(context), EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB).build();
 
         try (OutputStream out = encryptedFile.openFileOutput()) {
-            byte[] buffer = new byte[8192]; // Buffer più grande per file lunghi
+            byte[] buffer = new byte[8192];
             int len;
             while ((len = in.read(buffer)) != -1) {
                 out.write(buffer, 0, len);
@@ -63,13 +48,7 @@ public class EncryptedFileHelper {
     }
 
     public static File decryptToTempFile(Context context, File encryptedFile, String outputName) throws IOException, GeneralSecurityException {
-        EncryptedFile ef = new EncryptedFile.Builder(
-                context,
-                encryptedFile,
-                getMasterKey(context),
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-        ).build();
-
+        EncryptedFile ef = new EncryptedFile.Builder(context, encryptedFile, getMasterKey(context), EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB).build();
         File temp = new File(context.getCacheDir(), outputName);
 
         try (InputStream in = ef.openFileInput();
@@ -80,12 +59,10 @@ public class EncryptedFileHelper {
                 out.write(buffer, 0, len);
             }
         }
-
         return temp;
     }
 
     public static InputStream openDecryptedInputStream(Context context, File file) throws IOException, GeneralSecurityException {
-        //Alternativa più robusta: scrivi il contenuto temporaneamente su file per letture lunghe
         File temp = decryptToTempFile(context, file, file.getName() + ".tmp");
         return new FileInputStream(temp);
     }
@@ -93,7 +70,7 @@ public class EncryptedFileHelper {
     public static MasterKey getMasterKey(Context context) throws GeneralSecurityException, IOException {
         return new MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .setUserAuthenticationRequired(false) //Fondamentale per backup automatici
+                .setUserAuthenticationRequired(false) // Per i backup automatici
                 .build();
     }
 }

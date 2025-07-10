@@ -10,7 +10,7 @@ public class AppLifecycleTracker implements Application.ActivityLifecycleCallbac
     private static int started = 0;
     private static boolean needsReauth = false;
     private static long lastBackgroundTime = 0;
-    private static final long GRACE_PERIOD_MS = 10_000; // 10 secondi
+    private static final long backgroundInterval = 10_000;
 
     public static boolean needsReauth() {
         return needsReauth;
@@ -24,12 +24,12 @@ public class AppLifecycleTracker implements Application.ActivityLifecycleCallbac
     public void onActivityStarted(Activity activity) {
         if (started == 0 && lastBackgroundTime > 0) {
             long elapsed = System.currentTimeMillis() - lastBackgroundTime;
-            if (elapsed > GRACE_PERIOD_MS) {
+            if (elapsed > backgroundInterval) {
                 needsReauth = true;
             } else {
                 needsReauth = false;
             }
-            lastBackgroundTime = 0; // resetta
+            lastBackgroundTime = 0;
         }
         started++;
     }
@@ -43,7 +43,6 @@ public class AppLifecycleTracker implements Application.ActivityLifecycleCallbac
         }
     }
 
-    // Altri metodi non usati
     public void onActivityCreated(Activity a, Bundle b) {}
     public void onActivityDestroyed(Activity a) {}
     public void onActivityPaused(Activity a) {}

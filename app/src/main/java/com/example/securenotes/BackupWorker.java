@@ -28,7 +28,6 @@ public class BackupWorker extends Worker {
     public Result doWork() {
         Context ctx = getApplicationContext();
 
-        // Ottiene input da WorkManager
         String folderUriStr = getInputData().getString(KEY_FOLDER);
         String password = getInputData().getString(KEY_PASSWORD);
 
@@ -42,7 +41,7 @@ public class BackupWorker extends Worker {
             String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
             String filename = "auto_backup_" + timestamp + ".aes";
 
-            // Crea il documento di backup nella cartella scelta
+            // Crea il backup nella cartella scelta
             Uri docUri = DocumentsContract.buildDocumentUriUsingTree(
                     folderUri,
                     DocumentsContract.getTreeDocumentId(folderUri)
@@ -60,11 +59,11 @@ public class BackupWorker extends Worker {
             OutputStream out = ctx.getContentResolver().openOutputStream(outputUri);
             if (out == null) throw new Exception("OutputStream nullo");
 
-            // Crea backup temporaneo ZIP
+            // Crea il backup temporaneo in formnato ZIP
             File tempZip = new File(ctx.getCacheDir(), "temp_backup.zip");
             AESBackupHelper.createZipOfData(ctx, tempZip);
 
-            // Cripta il backup nel file scelto
+            // Cripta il backup
             AESBackupHelper.encryptToStream(tempZip, out, password);
 
             tempZip.delete();

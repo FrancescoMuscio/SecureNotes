@@ -3,10 +3,13 @@ package com.example.securenotes;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
@@ -16,6 +19,7 @@ import androidx.security.crypto.MasterKey;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.Executor;
+import com.scottyab.rootbeer.RootBeer;
 
 
 public class LoginActivity extends AppCompatActivity {
@@ -27,7 +31,21 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 🔐 Controlla se il PIN esiste. Se no, forza setup.
+        // Controllo della presneza di root nel dispositivo
+        RootBeer rootBeer = new RootBeer(this);
+        if (rootBeer.isRooted()) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                new AlertDialog.Builder(this)
+                        .setTitle("Dispositivo non sicuro")
+                        .setMessage("Il dispositivo è rootato. L'applicazione non può essere eseguita per motivi di sicurezza.")
+                        .setCancelable(false)
+                        .setPositiveButton("Esci", (dialog, which) -> finishAffinity())
+                        .show();
+            });
+            return;
+        }
+
+        // Se il pin non esiste viene forzato il setup di esso
         try {
             if (!isPinSet()) {
                 startActivity(new Intent(this, SetupPinActivity.class));
@@ -76,17 +94,15 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                         if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                            // Porta alla schermata PIN
                             Intent intent = new Intent(LoginActivity.this, PinActivity.class);
                             startActivityForResult(intent, 1001);
-                        } else if(errorCode == BiometricPrompt.ERROR_USER_CANCELED ||    // Chiude prompt con indietro
+                        } else if(errorCode == BiometricPrompt.ERROR_USER_CANCELED ||    // Chiude il prompt andando "indietro"
                                 errorCode == BiometricPrompt.ERROR_LOCKOUT){          // Troppi tentativi errati
                                     finishAffinity();
                         } else{
                             Toast.makeText(LoginActivity.this, "Errore: " + errString, Toast.LENGTH_SHORT).show();
                         }
                     }
-
 
                     @Override
                     public void onAuthenticationFailed() {

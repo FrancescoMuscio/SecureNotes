@@ -11,22 +11,14 @@ public class SecureNotesApplication extends Application implements Configuration
     @Override
     public void onCreate() {
         super.onCreate();
-
-        // Applica il tema salvato
         ThemeUtils.applyThemeFromPreferences(this);
-
-        // Monitora lo stato per timeout e reautenticazione
         registerActivityLifecycleCallbacks(new AppLifecycleTracker());
-
-        Log.d("SecureNotesApp", "Applicazione avviata e WorkManager configurato.");
     }
 
     @NonNull
     @Override
     public Configuration getWorkManagerConfiguration() {
-        return new Configuration.Builder()
-                .setMinimumLoggingLevel(Log.INFO)
-                .build();
+        return new Configuration.Builder().setMinimumLoggingLevel(Log.INFO).build();
     }
 }
 

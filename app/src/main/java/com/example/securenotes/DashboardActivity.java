@@ -4,12 +4,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Insets;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -19,16 +23,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.io.File;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
-import com.scottyab.rootbeer.RootBeer;
-
 
 public class DashboardActivity extends AppCompatActivity {
 
@@ -43,19 +41,17 @@ public class DashboardActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Controllo root
-        RootBeer rootBeer = new RootBeer(this);
-        if (rootBeer.isRooted()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Dispositivo non sicuro")
-                    .setMessage("Il dispositivo è rootato. L'applicazione non può essere eseguita per motivi di sicurezza.")
-                    .setCancelable(false)
-                    .setPositiveButton("Esci", (dialog, which) -> finishAffinity())
-                    .show();
-            return;
-        }
-
         setContentView(R.layout.activity_dashboard);
+
+        // Risolve i problemi di interfaccia per le versioni di android > 14
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            final View rootView = findViewById(android.R.id.content);
+            rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+                Insets sysBars = insets.getInsets(WindowInsets.Type.systemBars());
+                v.setPadding(sysBars.left, sysBars.top, sysBars.right, sysBars.bottom);
+                return insets;
+            });
+        }
 
         RecyclerView recyclerView = findViewById(R.id.recycler_notes);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -71,6 +67,7 @@ public class DashboardActivity extends AppCompatActivity {
                 confirmDeleteNote(noteId);
             }
         });
+
         recyclerView.setAdapter(adapter);
 
         FloatingActionButton fab = findViewById(R.id.fab_add_note);
@@ -78,7 +75,6 @@ public class DashboardActivity extends AppCompatActivity {
 
         EditText etSearch = findViewById(R.id.et_search);
 
-        // Filtro in tempo reale
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -102,7 +98,7 @@ public class DashboardActivity extends AppCompatActivity {
             }
         });
 
-        // Nascondi tastiera e rimuovi focus solo alla pressione di "Fine"
+        // Rimuove il focus nella barra di ricerca solo alla pressione di "Fine" della tastiera
         etSearch.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_NULL) {
                 etSearch.clearFocus();
@@ -191,11 +187,10 @@ public class DashboardActivity extends AppCompatActivity {
                     allNotes.add(preview);
                     notes.add(preview);
                 } catch (Exception e) {
-                    // ignora file corrotti o accesso negato
+                    // Ignora file corrotti o l'accesso negato
                 }
             }
         }
-
         adapter.notifyDataSetChanged();
     }
 
@@ -231,20 +226,6 @@ public class DashboardActivity extends AppCompatActivity {
         }
     }
 
-    private SharedPreferences getEncryptedPrefs() throws GeneralSecurityException, IOException {
-        MasterKey masterKey = new MasterKey.Builder(this)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build();
-
-        return EncryptedSharedPreferences.create(
-                this,
-                "notes_secure",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        );
-    }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.dashboard_menu, menu);
@@ -262,7 +243,6 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(new Intent(this, FileVaultActivity.class));
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -286,6 +266,5 @@ public class DashboardActivity extends AppCompatActivity {
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
     }
-
 }
 

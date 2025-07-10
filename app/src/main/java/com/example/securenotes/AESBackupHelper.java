@@ -17,7 +17,6 @@ import javax.crypto.spec.SecretKeySpec;
 public class AESBackupHelper {
 
     // Backup manuale
-
     public static void createEncryptedBackup(Context context, Uri destination, String password) throws Exception {
         File tempZip = new File(context.getCacheDir(), "temp_backup.zip");
 
@@ -64,8 +63,7 @@ public class AESBackupHelper {
         tempZip.delete();
     }
 
-    //Backup automatico
-
+    // Backup automatico
     public static void createZipOfData(Context context, File outputZip) throws Exception {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outputZip))) {
             zipDirectory(context, new File(context.getFilesDir(), "notes"), "notes/", zos, true);
@@ -79,8 +77,7 @@ public class AESBackupHelper {
         }
     }
 
-    // Utilità ZIP
-
+    // ZIP
     private static void zipDirectory(Context ctx, File dir, String zipPathPrefix, ZipOutputStream zos, boolean isNote) throws IOException, GeneralSecurityException {
         if (!dir.exists()) return;
 
@@ -114,7 +111,6 @@ public class AESBackupHelper {
     }
 
     // Criptazione
-
     private static void encryptStream(InputStream in, OutputStream out, String password) throws Exception {
         byte[] salt = new byte[16];
         byte[] iv = new byte[16];

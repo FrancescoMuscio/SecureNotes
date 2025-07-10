@@ -23,7 +23,6 @@
             android:authorities="${applicationId}.androidx-startup"
             tools:node="remove" />
 
-        <!-- Dashboard principale -->
         <activity android:name=".DashboardActivity"
             android:configChanges="orientation|screenSize"
             android:screenOrientation="unspecified" />
@@ -44,7 +43,6 @@
             android:configChanges="orientation|screenSize"
             android:screenOrientation="unspecified" />
 
-        <!-- Schermata di login con biometria -->
         <activity android:name=".LoginActivity"
             android:exported="true">
             <intent-filter>
@@ -64,7 +62,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Receiver per riavviare i backup automatici dopo riavvio del dispositivo  -->
+        <!-- Receiver per riavviare i backup automatici dopo il riavvio del dispositivo  -->
         <receiver
             android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
             android:enabled="true"
@@ -75,7 +73,5 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
     </application>
-
 </manifest>

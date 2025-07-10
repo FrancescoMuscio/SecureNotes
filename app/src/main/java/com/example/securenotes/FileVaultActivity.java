@@ -2,8 +2,12 @@ package com.example.securenotes;
 
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Insets;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.WindowInsets;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -30,12 +34,21 @@ public class FileVaultActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_vault);
 
+        // Risolve i problemi di interfaccia per le versioni di android > 14
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            final View rootView = findViewById(android.R.id.content);
+            rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+                Insets sysBars = insets.getInsets(WindowInsets.Type.systemBars());
+                v.setPadding(sysBars.left, sysBars.top, sysBars.right, sysBars.bottom);
+                return insets;
+            });
+        }
+
         listView = findViewById(R.id.list_view_files);
         attachmentsDir = new File(getFilesDir(), "secure_attachments");
         if (!attachmentsDir.exists()) attachmentsDir.mkdirs();
 
-        adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_1, fileNames);
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, fileNames);
         listView.setAdapter(adapter);
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
@@ -104,15 +117,9 @@ public class FileVaultActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 try {
-                    File decryptedTemp = EncryptedFileHelper.decryptToTempFile(
-                            FileVaultActivity.this, encryptedFile, originalName
-                    );
+                    File decryptedTemp = EncryptedFileHelper.decryptToTempFile(FileVaultActivity.this, encryptedFile, originalName);
 
-                    Uri uri = FileProvider.getUriForFile(
-                            FileVaultActivity.this,
-                            "com.example.securenotes.fileprovider",
-                            decryptedTemp
-                    );
+                    Uri uri = FileProvider.getUriForFile(FileVaultActivity.this, "com.example.securenotes.fileprovider", decryptedTemp);
 
                     Intent intent = new Intent(Intent.ACTION_VIEW);
                     intent.setDataAndType(uri, getMimeType(originalName));
@@ -164,6 +171,7 @@ public class FileVaultActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+
         if (result == null && uri.getPath() != null) {
             int cut = uri.getPath().lastIndexOf('/');
             if (cut != -1) {
@@ -190,7 +198,6 @@ public class FileVaultActivity extends AppCompatActivity {
             file = new File(dir, base + "(" + i + ")" + ext);
             i++;
         }
-
         return file;
     }
 

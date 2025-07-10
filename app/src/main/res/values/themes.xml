@@ -1,11 +1,22 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.SecureNotes" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Colori chiari -->
+    <style name="Theme.SecureNotes" parent="Theme.MaterialComponents.Light.DarkActionBar">
         <item name="colorPrimary">@color/purple_500</item>
         <item name="colorPrimaryVariant">@color/purple_700</item>
         <item name="colorOnPrimary">@color/white</item>
-        <item name="android:colorBackground">#FFFFFF</item>
+        <item name="colorAccent">@color/purple_500</item>
+
+        <item name="android:colorBackground">@android:color/white</item>
+
         <item name="android:textColorPrimary">#000000</item>
         <item name="android:textColorSecondary">#444444</item>
+        <item name="android:textColorHint">#888888</item>
+        <item name="android:editTextColor">#000000</item>
+
+        <item name="floatingActionButtonStyle">@style/FABStyle</item>
+    </style>
+
+    <style name="FABStyle" parent="Widget.MaterialComponents.FloatingActionButton">
+        <item name="backgroundTint">@color/purple_500</item>
+        <item name="rippleColor">#66FFFFFF</item>
     </style>
 </resources>

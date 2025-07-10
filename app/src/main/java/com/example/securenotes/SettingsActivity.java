@@ -3,8 +3,12 @@ package com.example.securenotes;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Insets;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.WindowInsets;
 import android.widget.*;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -33,8 +37,7 @@ public class SettingsActivity extends AppCompatActivity {
                     String password = backupPasswordTemp;
 
                     if (destinationUri != null && password != null) {
-                        getContentResolver().takePersistableUriPermission(destinationUri,
-                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        getContentResolver().takePersistableUriPermission(destinationUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                         AlertDialog progressDialog = new AlertDialog.Builder(this)
                                 .setTitle("Backup in corso")
@@ -71,9 +74,7 @@ public class SettingsActivity extends AppCompatActivity {
                     Uri uri = result.getData().getData();
                     String password = restorePasswordTemp;
 
-                    if (uri != null && password != null) {
-                        getContentResolver().takePersistableUriPermission(uri,
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    if (uri != null && password != null) {getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                         AlertDialog progressDialog = new AlertDialog.Builder(this)
                                 .setTitle("Ripristino backup in corso")
@@ -103,8 +104,7 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
-    private final ActivityResultLauncher<Intent> folderPickerLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+    private final ActivityResultLauncher<Intent> folderPickerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri treeUri = result.getData().getData();
                     if (treeUri != null) {
@@ -120,6 +120,16 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+
+        // Risolve i problemi di interfaccia per le versioni di android > 14
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            final View rootView = findViewById(android.R.id.content);
+            rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+                Insets sysBars = insets.getInsets(WindowInsets.Type.systemBars());
+                v.setPadding(sysBars.left, sysBars.top, sysBars.right, sysBars.bottom);
+                return insets;
+            });
+        }
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE);
 
@@ -232,7 +242,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         btnSetSchedule.setOnClickListener(v -> {
             String[] labels = {"15 minuti", "1 giorno", "3 giorni", "7 giorni"};
-            int[] intervals = {15, 1440, 4320, 10080}; // in minuti
+            int[] intervals = {15, 1440, 4320, 10080}; // In minuti
 
             final int[] selectedIndex = {0}; // default = 15 minuti
 
@@ -242,7 +252,6 @@ public class SettingsActivity extends AppCompatActivity {
                     .setPositiveButton("Avanti", (dialog, which) -> {
                         int chosenInterval = intervals[selectedIndex[0]];
 
-                        // Ora apriamo la finestra per la password
                         EditText input = new EditText(this);
                         input.setHint("Password per backup automatico");
 
@@ -330,8 +339,8 @@ public class SettingsActivity extends AppCompatActivity {
                 .build();
 
         Constraints constraints = new Constraints.Builder()
-                .setRequiresBatteryNotLow(true) // non esegue con batteria bassa
-                .setRequiresCharging(false) // opzionale: esegue anche se non in carica
+                .setRequiresBatteryNotLow(true) // Non esegue con batteria bassa
+                .setRequiresCharging(false) // Esegue anche se non in carica
                 .build();
 
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(

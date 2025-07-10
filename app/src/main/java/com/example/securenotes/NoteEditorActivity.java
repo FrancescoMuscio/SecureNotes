@@ -1,7 +1,12 @@
 package com.example.securenotes;
 
+import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Insets;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -25,7 +30,7 @@ public class NoteEditorActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 try {
-                    EncryptedFileHelper.getMasterKey(getApplicationContext()); // forza Keystore
+                    EncryptedFileHelper.getMasterKey(getApplicationContext());
                     setupUI();
                 } catch (Exception e) {
                     Toast.makeText(NoteEditorActivity.this, "Errore Keystore", Toast.LENGTH_SHORT).show();
@@ -41,7 +46,19 @@ public class NoteEditorActivity extends AppCompatActivity {
     }
 
     private void setupUI() {
+
         setContentView(R.layout.activity_note_editor);
+
+        // Risolve i problemi di interfaccia per le versioni di android >=15
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            final View rootView = findViewById(android.R.id.content);
+            rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+                Insets sysBars = insets.getInsets(WindowInsets.Type.systemBars());
+                v.setPadding(sysBars.left, sysBars.top, sysBars.right, sysBars.bottom);
+                return insets;
+            });
+        }
+
         etNoteTitle = findViewById(R.id.et_note_title);
         etNoteContent = findViewById(R.id.et_note_content);
         notesDir = new File(getFilesDir(), "notes");
@@ -100,11 +117,28 @@ public class NoteEditorActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        // gestisci se necessario, oppure lascia vuoto
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 999) {
+            if (resultCode == RESULT_OK) {
+                try {
+                    EncryptedFileHelper.getMasterKey(getApplicationContext());
+                    setupUI();
+                } catch (Exception e) {
+                    Toast.makeText(this, "Errore Keystore", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+            } else {
+                finish(); // l'utente ha annullato o fallito il PIN
+            }
+        }
     }
 
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+    }
 }
 
 
