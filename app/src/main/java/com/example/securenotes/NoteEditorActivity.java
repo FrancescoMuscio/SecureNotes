@@ -49,7 +49,7 @@ public class NoteEditorActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_note_editor);
 
-        // Risolve i problemi di interfaccia per le versioni di android >=15
+        // Risolve i problemi di interfaccia per le versioni di android > 14
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             final View rootView = findViewById(android.R.id.content);
             rootView.setOnApplyWindowInsetsListener((v, insets) -> {

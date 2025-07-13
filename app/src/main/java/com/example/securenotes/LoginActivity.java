@@ -31,7 +31,7 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Controllo della presneza di root nel dispositivo
+        // Controllo della presenza di root nel dispositivo
         RootBeer rootBeer = new RootBeer(this);
         if (rootBeer.isRooted()) {
             new Handler(Looper.getMainLooper()).post(() -> {
@@ -126,7 +126,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) { // Riceve il risultato da PinActivity
         if (requestCode == 1001 && resultCode == RESULT_OK) {
             goToDashboard();
         } else {

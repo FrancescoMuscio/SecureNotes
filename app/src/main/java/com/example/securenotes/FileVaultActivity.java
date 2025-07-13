@@ -209,6 +209,7 @@ public class FileVaultActivity extends AppCompatActivity {
             case "png": return "image/png";
             case "pdf": return "application/pdf";
             case "txt": return "text/plain";
+            case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             default: return "*/*";
         }
     }

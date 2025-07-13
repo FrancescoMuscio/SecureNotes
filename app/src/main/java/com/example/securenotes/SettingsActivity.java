@@ -30,6 +30,7 @@ public class SettingsActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     private String backupPasswordTemp, restorePasswordTemp;
 
+    // Supporto creazione backup manuale
     private final ActivityResultLauncher<Intent> exportLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
@@ -68,6 +69,7 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
+    // Supporto ripristino backup
     private final ActivityResultLauncher<Intent> importLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
@@ -104,6 +106,7 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
+    // Cartella backup automatici
     private final ActivityResultLauncher<Intent> folderPickerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri treeUri = result.getData().getData();
@@ -145,6 +148,8 @@ public class SettingsActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_save_timeout).setOnClickListener(v -> {
             String value = etTimeout.getText().toString().trim();
+
+            // Timeout e PIN
             if (value.isEmpty()) {
                 toast("Inserisci un numero");
                 return;
@@ -183,6 +188,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        // Backup manuale
         findViewById(R.id.btn_backup).setOnClickListener(v -> {
             EditText input = new EditText(this);
             input.setHint("Password per il backup");
@@ -209,6 +215,7 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
+        // Ripristino backup
         findViewById(R.id.btn_restore).setOnClickListener(v -> {
             EditText input = new EditText(this);
             input.setHint("Password del backup");
@@ -235,6 +242,7 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
+        // Schedulazione backup automatici
         btnPickFolder.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             folderPickerLauncher.launch(intent);
@@ -304,6 +312,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        // Tema
         findViewById(R.id.btn_choose_theme).setOnClickListener(v -> {
             String[] options = {"Chiaro", "Scuro", "Segui sistema"};
             String[] values = {"light", "dark", "system"};
@@ -332,6 +341,7 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
+    // Metodo per i backup automatici
     private void scheduleBackup(Uri folderUri, String password, int intervalMinutes) {
         Data inputData = new Data.Builder()
                 .putString(BackupWorker.KEY_FOLDER, folderUri.toString())
