@@ -28,6 +28,9 @@ public class FileVaultActivity extends AppCompatActivity {
     private List<String> fileNames = new ArrayList<>();
     private ArrayAdapter<String> adapter;
     private File attachmentsDir;
+    private File pendingFileToOpen;
+    private String pendingFileName;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,25 +113,22 @@ public class FileVaultActivity extends AppCompatActivity {
                 Toast.makeText(this, "Errore import file", Toast.LENGTH_SHORT).show();
             }
         }
+
+        if (requestCode == 999 && resultCode == RESULT_OK) {
+            if (pendingFileToOpen != null && pendingFileName != null) {
+                openDecryptedFile(pendingFileToOpen, pendingFileName);
+            }
+        }
     }
 
     private void openEncryptedFile(File encryptedFile, String originalName) {
+        pendingFileToOpen = encryptedFile;
+        pendingFileName = originalName;
+
         AuthHelper.authenticate(this, new AuthHelper.AuthCallback() {
             @Override
             public void onSuccess() {
-                try {
-                    File decryptedTemp = EncryptedFileHelper.decryptToTempFile(FileVaultActivity.this, encryptedFile, originalName);
-
-                    Uri uri = FileProvider.getUriForFile(FileVaultActivity.this, "com.example.securenotes.fileprovider", decryptedTemp);
-
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setDataAndType(uri, getMimeType(originalName));
-                    intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    startActivity(intent);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Toast.makeText(FileVaultActivity.this, "Errore apertura file", Toast.LENGTH_SHORT).show();
-                }
+                openDecryptedFile(pendingFileToOpen, pendingFileName);
             }
 
             @Override
@@ -137,6 +137,22 @@ public class FileVaultActivity extends AppCompatActivity {
             }
         });
     }
+
+    private void openDecryptedFile(File encryptedFile, String originalName) {
+        try {
+            File decryptedTemp = EncryptedFileHelper.decryptToTempFile(this, encryptedFile, originalName);
+            Uri uri = FileProvider.getUriForFile(this, "com.example.securenotes.fileprovider", decryptedTemp);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, getMimeType(originalName));
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Errore apertura file", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
 
     private void confirmDelete(String fileName) {
         new AlertDialog.Builder(this)
